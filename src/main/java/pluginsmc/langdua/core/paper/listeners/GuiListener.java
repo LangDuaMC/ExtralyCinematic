@@ -1,11 +1,5 @@
 package pluginsmc.langdua.core.paper.listeners;
 
-import pluginsmc.langdua.core.paper.Core;
-import pluginsmc.langdua.core.paper.guis.CinematicFrameGUI;
-import pluginsmc.langdua.core.paper.guis.CinematicGUI;
-import pluginsmc.langdua.core.paper.guis.CommandEditorGUI;
-import pluginsmc.langdua.core.paper.objects.Cinematic;
-import pluginsmc.langdua.core.paper.objects.Frame;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -16,6 +10,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
+import pluginsmc.langdua.core.paper.Core;
+import pluginsmc.langdua.core.paper.guis.CinematicFrameGUI;
+import pluginsmc.langdua.core.paper.guis.CinematicGUI;
+import pluginsmc.langdua.core.paper.guis.CommandEditorGUI;
+import pluginsmc.langdua.core.paper.objects.Cinematic;
+import pluginsmc.langdua.core.paper.objects.Frame;
 
 public class GuiListener implements Listener {
 
@@ -73,7 +73,7 @@ public class GuiListener implements Listener {
             Cinematic cinematic = instance.getGame().getCinematics().get(cinematicName);
             if (cinematic == null) return;
 
-            // Handle Pagination
+            // Nút chuyển trang
             if (clicked.getType() == Material.ARROW) {
                 String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
                 if (itemName.equals("Next Page")) {
@@ -84,7 +84,7 @@ public class GuiListener implements Listener {
                 return;
             }
 
-            // Handle Back Button
+            // Nút quay lại
             if (clicked.getType() == Material.OAK_DOOR) {
                 String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
                 if (itemName.equals("Back to Cinematics List")) {
@@ -93,7 +93,7 @@ public class GuiListener implements Listener {
                 return;
             }
 
-            // Handle Visualize Path
+            // Nút vẽ Particle xem trước đường bay
             if (clicked.getType() == Material.ENDER_EYE) {
                 String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
                 if (itemName.equals("Visualize Camera Path")) {
@@ -103,6 +103,7 @@ public class GuiListener implements Listener {
                 return;
             }
 
+            // Thao tác với Frame
             if (clicked.getType() == Material.PAPER) {
                 String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
                 if (!itemName.startsWith("Frame ")) return;

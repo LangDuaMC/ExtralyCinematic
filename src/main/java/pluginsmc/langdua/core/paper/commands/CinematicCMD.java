@@ -238,6 +238,27 @@ public class CinematicCMD extends BaseCommand {
         }
     }
 
+    @Subcommand("shake")
+    @Description("Sets the camera shake intensity (0 to disable, 5+ is heavy).")
+    @CommandCompletion("<name> <intensity>")
+    public void shake(Player player, String cinematicName, double intensity) {
+        var cinematics = instance.getGame().getCinematics();
+        if (!cinematics.containsKey(cinematicName)) {
+            player.sendMessage(ChatColor.RED + "Cinematic doesn't exist.");
+            return;
+        }
+
+        Cinematic cine = cinematics.get(cinematicName);
+        cine.setShakeIntensity(intensity);
+        instance.getStorageManager().save(cinematics);
+
+        if (intensity <= 0) {
+            player.sendMessage(ChatColor.GREEN + "Disabled camera shake for " + cinematicName);
+        } else {
+            player.sendMessage(ChatColor.GREEN + "Set shake intensity for " + cinematicName + " to " + intensity);
+        }
+    }
+
     private double catmullRom(double p0, double p1, double p2, double p3, double t) {
         return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
     }
@@ -365,7 +386,6 @@ public class CinematicCMD extends BaseCommand {
                 float interpYaw;
                 float interpPitch;
 
-                // Xử lý Focus Target
                 if (cine.hasFocus() && cine.getFocusWorld().equals(worldForSegment.getName())) {
                     Vector direction = new Vector(cine.getFocusX() - x, cine.getFocusY() - y, cine.getFocusZ() - z);
                     Location lookLoc = new Location(worldForSegment, x, y, z);
@@ -385,6 +405,14 @@ public class CinematicCMD extends BaseCommand {
 
                     interpYaw = (float) catmullRom(y0, y1, y2, y3, localT);
                     interpPitch = (float) catmullRom(p0, p1, p2, p3, localT);
+                }
+
+                // XỬ LÝ CAMERA SHAKE (RUNG LẮC)
+                if (cine.getShakeIntensity() > 0) {
+                    float shakeY = (float) ((Math.random() - 0.5) * cine.getShakeIntensity());
+                    float shakeP = (float) ((Math.random() - 0.5) * cine.getShakeIntensity());
+                    interpYaw += shakeY;
+                    interpPitch += shakeP;
                 }
 
                 Location loc = new Location(worldForSegment, x, y, z, interpYaw, interpPitch);
@@ -486,6 +514,7 @@ public class CinematicCMD extends BaseCommand {
         sender.sendMessage(ChatColor.YELLOW + "/cinematic play <player> <name>" + ChatColor.GRAY + " - Play cinematic.");
         sender.sendMessage(ChatColor.YELLOW + "/cinematic path <name>" + ChatColor.GRAY + " - Visualize path.");
         sender.sendMessage(ChatColor.YELLOW + "/cinematic focus <name> set|clear" + ChatColor.GRAY + " - Set camera target.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic shake <name> <intensity>" + ChatColor.GRAY + " - Set camera shake.");
         sender.sendMessage(ChatColor.YELLOW + "/cinematic edit" + ChatColor.GRAY + " - Open GUI Editor.");
         sender.sendMessage(ChatColor.YELLOW + "/cinematic help" + ChatColor.GRAY + " - Show this message.");
         sender.sendMessage(ChatColor.GOLD + "--------------------------");

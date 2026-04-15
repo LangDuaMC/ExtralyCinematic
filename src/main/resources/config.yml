@@ -1,4 +1,6 @@
-playback:
-  # Number of camera interpolation ticks between recorded frames.
-  # 1 keeps original playback timing with no extra smoothing.
-  interpolation-steps: 1
+# Số bước chia nhỏ (nội suy) giữa 2 khung hình (Mặc định: 10)
+interpolation-steps: 10
+
+# Tên của Cinematic sẽ TỰ ĐỘNG CHIẾU khi người chơi lần đầu tiên vào server.
+# Để trống ("") nếu bạn muốn tắt tính năng này.
+auto-play-on-first-join: "Intro"
