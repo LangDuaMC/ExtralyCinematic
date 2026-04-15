@@ -1,0 +1,4 @@
+playback:
+  # Number of camera interpolation ticks between recorded frames.
+  # 1 keeps original playback timing with no extra smoothing.
+  interpolation-steps: 1

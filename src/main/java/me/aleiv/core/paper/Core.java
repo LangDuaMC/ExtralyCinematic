@@ -19,6 +19,7 @@ public class Core extends JavaPlugin {
     private @Getter Game game;
     private @Getter PaperCommandManager commandManager;
     private @Getter StorageManager storageManager;
+    private @Getter int interpolationSteps;
 
     public static <T> TaskChain<T> newChain() {
         return taskChainFactory.newChain();
@@ -31,6 +32,8 @@ public class Core extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
+        saveDefaultConfig();
+        interpolationSteps = Math.max(1, getConfig().getInt("playback.interpolation-steps", 1));
 
         storageManager = new StorageManager(this);
 
