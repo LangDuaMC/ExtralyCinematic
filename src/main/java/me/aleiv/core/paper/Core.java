@@ -1,0 +1,53 @@
+package me.aleiv.core.paper;
+
+import co.aikar.commands.PaperCommandManager;
+import co.aikar.taskchain.BukkitTaskChainFactory;
+import co.aikar.taskchain.TaskChain;
+import co.aikar.taskchain.TaskChainFactory;
+import lombok.Getter;
+import lombok.Setter;
+import me.aleiv.core.paper.commands.CinematicCMD;
+import me.aleiv.core.paper.listeners.GlobalListener;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class Core extends JavaPlugin {
+
+    private static @Getter Core instance;
+    private static @Getter
+    @Setter TaskChainFactory taskChainFactory;
+    private @Getter Game game;
+    private @Getter PaperCommandManager commandManager;
+    private @Getter StorageManager storageManager;
+
+    public static <T> TaskChain<T> newChain() {
+        return taskChainFactory.newChain();
+    }
+
+    public static <T> TaskChain<T> newSharedChain(String name) {
+        return taskChainFactory.newSharedChain(name);
+    }
+
+    @Override
+    public void onEnable() {
+        instance = this;
+
+        storageManager = new StorageManager(this);
+
+        game = new Game(this);
+        game.setCinematics(storageManager.load());
+        game.runTaskTimerAsynchronously(this, 0L, 20L);
+
+        taskChainFactory = BukkitTaskChainFactory.create(this);
+        Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
+        commandManager = new PaperCommandManager(this);
+        commandManager.registerCommand(new CinematicCMD(this));
+    }
+
+    @Override
+    public void onDisable() {
+        if (storageManager != null && game != null) {
+            storageManager.save(game.getCinematics());
+        }
+    }
+}
