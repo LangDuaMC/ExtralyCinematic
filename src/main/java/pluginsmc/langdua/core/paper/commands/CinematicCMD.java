@@ -18,6 +18,7 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 
 import java.util.HashMap;
 import java.util.List;
@@ -202,13 +203,39 @@ public class CinematicCMD extends BaseCommand {
                         Location dirLoc = loc.clone();
                         dirLoc.setYaw(f.getYaw());
                         dirLoc.setPitch(f.getPitch());
-                        org.bukkit.util.Vector dir = dirLoc.getDirection().multiply(0.5);
+                        Vector dir = dirLoc.getDirection().multiply(0.5);
                         world.spawnParticle(org.bukkit.Particle.END_ROD, loc.add(dir), 1, 0, 0, 0, 0);
                     }
                 }
                 ticks += 5;
             }
         }.runTaskTimer(instance, 0L, 5L);
+    }
+
+    @Subcommand("focus")
+    @Description("Sets a focus target for the cinematic camera.")
+    @CommandCompletion("<name> set|clear")
+    public void focus(Player player, String cinematicName, String action) {
+        var cinematics = instance.getGame().getCinematics();
+        if (!cinematics.containsKey(cinematicName)) {
+            player.sendMessage(ChatColor.RED + "Cinematic doesn't exist.");
+            return;
+        }
+
+        Cinematic cine = cinematics.get(cinematicName);
+
+        if (action.equalsIgnoreCase("clear")) {
+            cine.clearFocus();
+            instance.getStorageManager().save(cinematics);
+            player.sendMessage(ChatColor.GREEN + "Cleared focus target for " + cinematicName);
+        } else if (action.equalsIgnoreCase("set")) {
+            Location loc = player.getLocation();
+            cine.setFocus(loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
+            instance.getStorageManager().save(cinematics);
+            player.sendMessage(ChatColor.GREEN + "Set focus target for " + cinematicName + " at your current location.");
+        } else {
+            player.sendMessage(ChatColor.RED + "Usage: /cinematic focus <name> set|clear");
+        }
     }
 
     private double catmullRom(double p0, double p1, double p2, double p3, double t) {
@@ -220,6 +247,10 @@ public class CinematicCMD extends BaseCommand {
         while (diff < -180.0f) diff += 360.0f;
         while (diff > 180.0f) diff -= 360.0f;
         return prevAngle + diff;
+    }
+
+    private double easeInOutSine(double x) {
+        return -(Math.cos(Math.PI * x) - 1) / 2;
     }
 
     @Subcommand("play")
@@ -262,76 +293,112 @@ public class CinematicCMD extends BaseCommand {
 
         var chain = Core.newChain();
         final int steps = instance.getInterpolationSteps();
+        final int totalFrames = frames.size();
+        final int totalTicks = (totalFrames - 1) * steps;
 
-        for (int i = 0; i < frames.size(); i++) {
-            final Frame currentFrame = frames.get(i);
+        int[] lastPassedFrame = {-1};
 
-            if (!currentFrame.getCommands().isEmpty()) {
-                chain.sync(() -> {
-                    if (!game.getViewers().contains(player.getUniqueId())) return;
-                    for (String cmd : currentFrame.getCommands()) {
-                        String finalCmd = cmd.replace("%player%", player.getName());
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
-                    }
-                });
-            }
+        for (int tick = 0; tick <= totalTicks; tick++) {
+            final int currentTick = tick;
+            final boolean isLastTick = (tick == totalTicks);
 
-            if (i == 0) continue;
-
-            final Frame f1 = frames.get(i - 1);
-            final Frame f2 = frames.get(i);
-            final Frame f0 = i > 1 ? frames.get(i - 2) : f1;
-            final Frame f3 = i < frames.size() - 1 ? frames.get(i + 1) : f2;
-
-            final org.bukkit.World worldForSegment = Bukkit.getWorld(f1.getWorld() != null ? f1.getWorld() : f2.getWorld());
-
-            final float y1 = f1.getYaw();
-            final float y0 = smoothAngle(y1, f0.getYaw());
-            final float y2 = smoothAngle(y1, f2.getYaw());
-            final float y3 = smoothAngle(y2, f3.getYaw());
-
-            final float p1 = f1.getPitch();
-            final float p0 = smoothAngle(p1, f0.getPitch());
-            final float p2 = smoothAngle(p1, f2.getPitch());
-            final float p3 = smoothAngle(p2, f3.getPitch());
-
-            for (int s = 0; s < steps; s++) {
-                final int stepIndex = s;
-                final boolean isLastSegment = (i == frames.size() - 1) && (s == steps - 1);
-
-                chain.delay(1).sync(() -> {
-                    if (!game.getViewers().contains(player.getUniqueId())) {
-                        if (cam.isValid()) {
-                            player.setSpectatorTarget(null);
-                            cam.remove();
-                            player.setGameMode(originalGameMode);
-                            player.teleport(originalLoc);
-                        }
-                        return;
-                    }
-
-                    double t = (steps <= 1) ? 0.0D : (double) stepIndex / (double) steps;
-
-                    double x = catmullRom(f0.getX(), f1.getX(), f2.getX(), f3.getX(), t);
-                    double y = catmullRom(f0.getY(), f1.getY(), f2.getY(), f3.getY(), t);
-                    double z = catmullRom(f0.getZ(), f1.getZ(), f2.getZ(), f3.getZ(), t);
-
-                    float interpYaw = (float) catmullRom(y0, y1, y2, y3, t);
-                    float interpPitch = (float) catmullRom(p0, p1, p2, p3, t);
-
-                    var loc = new Location(worldForSegment, x, y, z, interpYaw, interpPitch);
-                    cam.teleport(loc);
-
-                    if (isLastSegment) {
-                        game.getViewers().remove(player.getUniqueId());
+            chain.delay(1).sync(() -> {
+                if (!game.getViewers().contains(player.getUniqueId())) {
+                    if (cam.isValid()) {
                         player.setSpectatorTarget(null);
                         cam.remove();
                         player.setGameMode(originalGameMode);
                         player.teleport(originalLoc);
-                        sender.sendMessage(ChatColor.AQUA + "[ExtralyCinematic] " + ChatColor.GREEN + "Cinematic finished.");
                     }
-                });
-            }
+                    return;
+                }
+
+                double progress = totalTicks == 0 ? 1.0 : (double) currentTick / totalTicks;
+                double easedProgress = easeInOutSine(progress);
+
+                double exactSegment = easedProgress * (totalFrames - 1);
+                int segmentIndex = (int) Math.min(exactSegment, totalFrames - 2);
+                double localT = exactSegment - segmentIndex;
+
+                if (isLastTick) {
+                    segmentIndex = totalFrames - 2;
+                    localT = 1.0;
+                }
+
+                int currentI = segmentIndex + 1;
+
+                while (lastPassedFrame[0] < currentI) {
+                    lastPassedFrame[0]++;
+                    Frame fCmd = frames.get(lastPassedFrame[0]);
+                    if (!fCmd.getCommands().isEmpty()) {
+                        for (String cmd : fCmd.getCommands()) {
+                            String finalCmd = cmd.replace("%player%", player.getName());
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
+                        }
+                    }
+                }
+
+                if (isLastTick && lastPassedFrame[0] < totalFrames - 1) {
+                    while (lastPassedFrame[0] < totalFrames - 1) {
+                        lastPassedFrame[0]++;
+                        Frame fCmd = frames.get(lastPassedFrame[0]);
+                        if (!fCmd.getCommands().isEmpty()) {
+                            for (String cmd : fCmd.getCommands()) {
+                                String finalCmd = cmd.replace("%player%", player.getName());
+                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
+                            }
+                        }
+                    }
+                }
+
+                Frame f1 = frames.get(segmentIndex);
+                Frame f2 = frames.get(segmentIndex + 1);
+                Frame f0 = segmentIndex > 0 ? frames.get(segmentIndex - 1) : f1;
+                Frame f3 = segmentIndex < totalFrames - 2 ? frames.get(segmentIndex + 2) : f2;
+
+                org.bukkit.World worldForSegment = Bukkit.getWorld(f1.getWorld() != null ? f1.getWorld() : f2.getWorld());
+
+                double x = catmullRom(f0.getX(), f1.getX(), f2.getX(), f3.getX(), localT);
+                double y = catmullRom(f0.getY(), f1.getY(), f2.getY(), f3.getY(), localT);
+                double z = catmullRom(f0.getZ(), f1.getZ(), f2.getZ(), f3.getZ(), localT);
+
+                float interpYaw;
+                float interpPitch;
+
+                // Xử lý Focus Target
+                if (cine.hasFocus() && cine.getFocusWorld().equals(worldForSegment.getName())) {
+                    Vector direction = new Vector(cine.getFocusX() - x, cine.getFocusY() - y, cine.getFocusZ() - z);
+                    Location lookLoc = new Location(worldForSegment, x, y, z);
+                    lookLoc.setDirection(direction);
+                    interpYaw = lookLoc.getYaw();
+                    interpPitch = lookLoc.getPitch();
+                } else {
+                    float y1 = f1.getYaw();
+                    float y0 = smoothAngle(y1, f0.getYaw());
+                    float y2 = smoothAngle(y1, f2.getYaw());
+                    float y3 = smoothAngle(y2, f3.getYaw());
+
+                    float p1 = f1.getPitch();
+                    float p0 = smoothAngle(p1, f0.getPitch());
+                    float p2 = smoothAngle(p1, f2.getPitch());
+                    float p3 = smoothAngle(p2, f3.getPitch());
+
+                    interpYaw = (float) catmullRom(y0, y1, y2, y3, localT);
+                    interpPitch = (float) catmullRom(p0, p1, p2, p3, localT);
+                }
+
+                Location loc = new Location(worldForSegment, x, y, z, interpYaw, interpPitch);
+                cam.teleport(loc);
+
+                if (isLastTick) {
+                    game.getViewers().remove(player.getUniqueId());
+                    player.setSpectatorTarget(null);
+                    cam.remove();
+                    player.setGameMode(originalGameMode);
+                    player.teleport(originalLoc);
+                    sender.sendMessage(ChatColor.AQUA + "[ExtralyCinematic] " + ChatColor.GREEN + "Cinematic finished.");
+                }
+            });
         }
         chain.sync(TaskChain::abort).execute();
     }
@@ -418,6 +485,7 @@ public class CinematicCMD extends BaseCommand {
         sender.sendMessage(ChatColor.YELLOW + "/cinematic record stop" + ChatColor.GRAY + " - Stop and save recording.");
         sender.sendMessage(ChatColor.YELLOW + "/cinematic play <player> <name>" + ChatColor.GRAY + " - Play cinematic.");
         sender.sendMessage(ChatColor.YELLOW + "/cinematic path <name>" + ChatColor.GRAY + " - Visualize path.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic focus <name> set|clear" + ChatColor.GRAY + " - Set camera target.");
         sender.sendMessage(ChatColor.YELLOW + "/cinematic edit" + ChatColor.GRAY + " - Open GUI Editor.");
         sender.sendMessage(ChatColor.YELLOW + "/cinematic help" + ChatColor.GRAY + " - Show this message.");
         sender.sendMessage(ChatColor.GOLD + "--------------------------");

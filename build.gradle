@@ -5,43 +5,35 @@
  * Learn how to create Gradle builds at https://guides.gradle.org/creating-new-gradle-builds
  */
 plugins {
-    id 'eclipse'
     id 'java'
-    // Đổi ID từ com.github.johnrengelman.shadow sang bản mới của cộng đồng
-    id 'io.github.goooler.shadow' version '8.1.8'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 // Đổi từ 11 sang 21
 sourceCompatibility = 21
 targetCompatibility = 21
 
-group = 'net.aleiv'
-version = '0.1-SNAPSHOT'
+group = 'pluginsmc.langdua'
+version = 'rl_1.0'
 
 
 repositories {
     mavenCentral()
-    jcenter()
-    maven { url 'https://papermc.io/repo/repository/maven-public/' }
-    maven { url 'https://libraries.minecraft.net/' }
-    maven { url 'https://plugins.gradle.org/m2' }
-    maven { url 'https://jitpack.io' }
-    maven { url 'https://repo.aikar.co/content/groups/aikar/' }
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+    maven { url = 'https://repo.aikar.co/content/groups/aikar/' }
 }
 
-
 dependencies {
-    //Paper
+    // Nâng cấp API lên bản 1.21.x
     compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
-    //Lombok
-    compileOnly 'org.projectlombok:lombok:1.18.34'
-    annotationProcessor 'org.projectlombok:lombok:1.18.34'
-    testCompileOnly 'org.projectlombok:lombok:1.18.34'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
-    //ACF
-    implementation 'co.aikar:acf-paper:0.5.0-SNAPSHOT'
-    //TASKS CHAINS
+
+    // Các thư viện cần thiết của plugin
+    implementation 'co.aikar:acf-paper:0.5.1-SNAPSHOT'
     implementation 'co.aikar:taskchain-bukkit:3.7.2'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
 }
 
 processResources {
@@ -66,6 +58,16 @@ shadowJar {
     relocate 'us.jcedeno.libs.rapidinv', 'com.yourpackage.rapidinv'
 
 }
+def targetJavaVersion = 21
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+}
 
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
 
 build.dependsOn shadowJar
