@@ -179,7 +179,7 @@ public class CinematicCMD extends BaseCommand {
             return;
         }
 
-        player.sendMessage(ChatColor.GREEN + "Visualizing path for 10 seconds...");
+        player.sendMessage(ChatColor.AQUA + "[ExtralyCinematic] " + ChatColor.GREEN + "Visualizing path for 10 seconds...");
 
         new BukkitRunnable() {
             int ticks = 0;
@@ -211,15 +211,10 @@ public class CinematicCMD extends BaseCommand {
         }.runTaskTimer(instance, 0L, 5L);
     }
 
-    // Catmull-Rom Spline Formula
     private double catmullRom(double p0, double p1, double p2, double p3, double t) {
-        return 0.5 * ((2 * p1) +
-                (-p0 + p2) * t +
-                (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t +
-                (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+        return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
     }
 
-    // Smooth shortest-path angle wrapping
     private float smoothAngle(float prevAngle, float currentAngle) {
         float diff = currentAngle - prevAngle;
         while (diff < -180.0f) diff += 360.0f;
@@ -271,7 +266,6 @@ public class CinematicCMD extends BaseCommand {
         for (int i = 0; i < frames.size(); i++) {
             final Frame currentFrame = frames.get(i);
 
-            // Execute commands for current frame
             if (!currentFrame.getCommands().isEmpty()) {
                 chain.sync(() -> {
                     if (!game.getViewers().contains(player.getUniqueId())) return;
@@ -284,15 +278,13 @@ public class CinematicCMD extends BaseCommand {
 
             if (i == 0) continue;
 
-            // Prepare points for Catmull-Rom (P0, P1, P2, P3)
-            final Frame f1 = frames.get(i - 1); // P1
-            final Frame f2 = frames.get(i);     // P2
-            final Frame f0 = i > 1 ? frames.get(i - 2) : f1; // P0
-            final Frame f3 = i < frames.size() - 1 ? frames.get(i + 1) : f2; // P3
+            final Frame f1 = frames.get(i - 1);
+            final Frame f2 = frames.get(i);
+            final Frame f0 = i > 1 ? frames.get(i - 2) : f1;
+            final Frame f3 = i < frames.size() - 1 ? frames.get(i + 1) : f2;
 
             final org.bukkit.World worldForSegment = Bukkit.getWorld(f1.getWorld() != null ? f1.getWorld() : f2.getWorld());
 
-            // Prepare smooth angles to prevent 360-degree flips
             final float y1 = f1.getYaw();
             final float y0 = smoothAngle(y1, f0.getYaw());
             final float y2 = smoothAngle(y1, f2.getYaw());
@@ -320,12 +312,10 @@ public class CinematicCMD extends BaseCommand {
 
                     double t = (steps <= 1) ? 0.0D : (double) stepIndex / (double) steps;
 
-                    // Catmull-Rom Interpolation for Position
                     double x = catmullRom(f0.getX(), f1.getX(), f2.getX(), f3.getX(), t);
                     double y = catmullRom(f0.getY(), f1.getY(), f2.getY(), f3.getY(), t);
                     double z = catmullRom(f0.getZ(), f1.getZ(), f2.getZ(), f3.getZ(), t);
 
-                    // Catmull-Rom Interpolation for Rotation
                     float interpYaw = (float) catmullRom(y0, y1, y2, y3, t);
                     float interpPitch = (float) catmullRom(p0, p1, p2, p3, t);
 
@@ -338,7 +328,7 @@ public class CinematicCMD extends BaseCommand {
                         cam.remove();
                         player.setGameMode(originalGameMode);
                         player.teleport(originalLoc);
-                        sender.sendMessage(ChatColor.GREEN + "Cinematic finished.");
+                        sender.sendMessage(ChatColor.AQUA + "[ExtralyCinematic] " + ChatColor.GREEN + "Cinematic finished.");
                     }
                 });
             }
@@ -407,7 +397,7 @@ public class CinematicCMD extends BaseCommand {
             return;
         }
 
-        sender.sendMessage(ChatColor.GOLD + "--- Available Cinematics ---");
+        sender.sendMessage(ChatColor.GOLD + "--- ExtralyCinematic List ---");
         cinematics.keySet().forEach(name -> sender.sendMessage(ChatColor.YELLOW + "- " + name));
         sender.sendMessage(ChatColor.GOLD + "--------------------------");
     }
@@ -421,17 +411,15 @@ public class CinematicCMD extends BaseCommand {
 
     @HelpCommand
     @Subcommand("help")
-    @Description("Displays help for Cinematic commands.")
+    @Description("Displays help for ExtralyCinematic commands.")
     public void help(CommandSender sender) {
-        sender.sendMessage(ChatColor.GOLD + "--- Cinematic Commands ---");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic rec <name> <seconds>" + ChatColor.GRAY + " - Records a new cinematic (old method).");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic record start <name>" + ChatColor.GRAY + " - Starts recording on-the-fly.");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic record stop" + ChatColor.GRAY + " - Stops on-the-fly recording.");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic play <player> <name>" + ChatColor.GRAY + " - Plays cinematic.");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic stop <player>" + ChatColor.GRAY + " - Stops a cinematic for a player.");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic path <name>" + ChatColor.GRAY + " - Visualizes the cinematic path in-game.");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic delete <name>" + ChatColor.GRAY + " - Deletes an existing cinematic.");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic edit" + ChatColor.GRAY + " - Opens the cinematic editor GUI.");
+        sender.sendMessage(ChatColor.GOLD + "--- ExtralyCinematic Commands ---");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic record start <name>" + ChatColor.GRAY + " - Start recording.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic record stop" + ChatColor.GRAY + " - Stop and save recording.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic play <player> <name>" + ChatColor.GRAY + " - Play cinematic.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic path <name>" + ChatColor.GRAY + " - Visualize path.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic edit" + ChatColor.GRAY + " - Open GUI Editor.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic help" + ChatColor.GRAY + " - Show this message.");
         sender.sendMessage(ChatColor.GOLD + "--------------------------");
     }
 }

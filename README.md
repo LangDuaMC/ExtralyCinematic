@@ -1,81 +1,101 @@
-# CinematicCore
+# 🎥 ExtralyCinematic
 
 > A lightweight, smooth, and feature-rich recording and playback plugin for Paper servers.
 > 
-> *[Cuộn xuống để xem phiên bản Tiếng Việt / Scroll down for the Vietnamese version](#phiên-bản-tiếng-việt-vietnamese-version)*
+> *[Cuộn xuống để xem phiên bản Tiếng Việt / Scroll down for the Vietnamese version](#-phiên-bản-tiếng-việt-vietnamese-version)*
 
 ---
 
 ## 🇬🇧 ENGLISH VERSION
 
-**CinematicCore** allows administrators to record player movements and play them back for other players as smooth camera fly-throughs. Designed for high performance, it features advanced path smoothing, an intuitive in-game GUI editor, and visual path debugging.
+**ExtralyCinematic** allows administrators to record player movements and play them back for other players as smooth camera fly-throughs. Designed for high performance, it features advanced path smoothing, an intuitive in-game GUI editor, and visual path debugging.
 
-### ✨ Features
-* **Smooth Camera Pathing (Catmull-Rom Spline):** Replaces rigid linear movement with smooth curves. The camera gracefully glides through corners without jarring snaps.
-* **In-Game GUI Editor:** No more fumbling with complex commands! Type `/cinematic edit` to view, manage, and edit frames directly via a clean inventory GUI.
-* **Visual Path Debugging:** Use `/cinematic path <name>` to spawn a 10-second particle trail outlining the exact flight path and camera direction in-game.
-* **Command Triggers on Frames:** Attach server commands to specific keyframes. When the camera reaches that frame, the command executes automatically.
-* **Optimized Storage:** Cinematics are saved individually as `.json` files inside the `cinematics/` folder, preventing monolithic file corruption and optimizing read/write speeds.
-* **Smart Cleanup:** Players are instantly removed from active viewing sessions if they disconnect, preventing phantom tasks and saving resources.
+### ✨ Key Features
+* **Smooth Camera Pathing (Catmull-Rom Spline):** Replaces rigid linear interpolation with advanced mathematical curves. The camera gracefully glides through corners without jarring snaps or robotic movements.
+* **Smart Angle Wrapping:** Automatically calculates the shortest rotation path to prevent the camera from violently snapping 360 degrees when looking around.
+* **In-Game GUI Editor:** Type `/cinematic edit` to access a clean, paginated inventory GUI where you can teleport to frames, delete bad frames, and open the Command Editor.
+* **Visual Path Debugging:** Use `/cinematic path <name>` (or click the Ender Eye in the GUI) to spawn a 10-second particle trail outlining the exact flight path.
+* **Command Triggers on Frames:** Attach server commands (with `%player%` support) to specific keyframes.
+* **Optimized Storage:** Cinematics are saved individually as `.json` files inside the `plugins/ExtralyCinematic/cinematics/` folder.
+
+### 📥 Installation & Setup
+1. Download the compiled `.jar` file.
+2. Place it into your server's `plugins/` directory.
+3. Restart the server to generate the default configuration files.
+
+### ⚙️ Configuration (`config.yml`)
+You can fine-tune the plugin's performance and smoothness by editing `plugins/ExtralyCinematic/config.yml`.
+
+```yaml
+# The number of interpolation steps between two frames.
+# Higher value = Smoother camera movement, but requires more teleport packets (can cause slight lag for players with high ping).
+# Lower value = Less packets sent, but movement might look a bit rigid.
+# Recommended default: 10
+interpolation-steps: 10
+```
 
 ### 📜 Commands & Permissions
 *Permission required for all commands: `cinematic.cmd`*
 
 | Command | Description |
 |---|---|
-| `/cinematic rec <name> <seconds>` | Record a cinematic for a fixed duration (countdown method). |
-| `/cinematic record start <name>` | Start recording on-the-fly (unlimited duration). |
-| `/cinematic record stop` | Stop the current on-the-fly recording. |
+| `/cinematic record start <name>` | Start recording on-the-fly. Move around to capture frames. |
+| `/cinematic record stop` | Stop and save the current on-the-fly recording. |
+| `/cinematic rec <name> <seconds>` | Record a cinematic for a fixed duration with a countdown. |
 | `/cinematic play <player> <name>` | Play a cinematic for a specific player. |
 | `/cinematic stop <player>` | Force-stop an ongoing cinematic for a player. |
-| `/cinematic path <name>` | Visualize the camera path using particles. |
-| `/cinematic edit` | Open the main GUI Editor. |
+| `/cinematic path <name>` | Visualize the camera path using particles in-game. |
+| `/cinematic edit` | **[RECOMMENDED]** Open the main GUI Editor to manage everything. |
 | `/cinematic list` | List all available cinematics in chat. |
-| `/cinematic delete <name>` | Delete a cinematic via command (also available in GUI). |
-| `/cinematic addcmd <name> <frame> <cmd>` | Add a command to a specific frame. |
-
-### 🚀 Quick Start Guide
-1. Run `/cinematic record start MyIntro`.
-2. Fly around to capture your frames. 
-3. Run `/cinematic record stop` to finish.
-4. (Optional) Run `/cinematic path MyIntro` to see the exact curve of your camera.
-5. (Optional) Run `/cinematic edit`, click `MyIntro` to teleport to specific frames, delete bad frames, or add commands.
-6. Run `/cinematic play <player> MyIntro` to test it!
+| `/cinematic delete <name>` | Delete a cinematic file completely. |
 
 ---
 
 ## 🇻🇳 PHIÊN BẢN TIẾNG VIỆT (VIETNAMESE VERSION)
 
-**CinematicCore** là một plugin siêu nhẹ giúp quản trị viên ghi lại quỹ đạo bay và phát lại cho người chơi xem dưới dạng các đoạn cắt cảnh (cinematic) mượt mà. Plugin được tối ưu hóa với thuật toán làm mượt quỹ đạo, giao diện GUI trực quan và hệ thống xem trước đường bay bằng Particle.
+**ExtralyCinematic** là một plugin siêu nhẹ và hiệu năng cao dành cho các server Paper. Plugin giúp quản trị viên ghi lại quỹ đạo bay và phát lại cho người chơi xem dưới dạng các đoạn cắt cảnh (cinematic) mượt mà như trong phim.
 
 ### ✨ Tính năng nổi bật
-* **Camera siêu mượt (Catmull-Rom Spline):** Loại bỏ hoàn toàn sự giật cục của di chuyển đường thẳng (Linear). Camera giờ đây sẽ uốn lượn mượt mà qua các góc cua giống như dùng ReplayMod.
-* **Chỉnh sửa qua GUI (In-Game Editor):** Không cần nhớ lệnh lằng nhằng! Dùng `/cinematic edit` để mở giao diện túi đồ, từ đó có thể xem, xóa frame, dịch chuyển đến vị trí frame, và quản lý các đoạn cinematic.
-* **Hiển thị đường bay (Visual Pathing):** Lệnh `/cinematic path <name>` sẽ vẽ ra một dải hạt (particles) in-game trong 10 giây, giúp bạn nhìn thấy chính xác quỹ đạo bay và hướng nhìn của camera.
-* **Gắn lệnh vào Frame:** Bạn có thể cài đặt để server tự động chạy một lệnh nào đó (ví dụ: phát âm thanh, nổ pháo hoa) khi camera bay đến một khung hình (frame) cụ thể.
-* **Lưu trữ thông minh:** Mỗi cinematic được lưu thành một file `.json` riêng biệt trong thư mục `cinematics/`. Tránh tình trạng hỏng toàn bộ dữ liệu và tối ưu tốc độ đọc/ghi.
-* **Tự động dọn dẹp:** Tự động hủy cinematic nếu người xem thoát khỏi server, giúp tiết kiệm tài nguyên.
+* **Camera siêu mượt (Catmull-Rom Spline):** Loại bỏ hoàn toàn sự giật cục của di chuyển đường thẳng (Linear). Camera uốn lượn qua các góc cua mượt mà giống hệt như dùng ReplayMod.
+* **Chống lật camera (Smart Angle Wrapping):** Tự động tính toán góc quay ngắn nhất, ngăn chặn lỗi camera bị giật xoay tròn 360 độ.
+* **Trình quản lý GUI (In-Game Editor):** Dùng `/cinematic edit` để mở giao diện quản lý. Bạn có thể dịch chuyển đến từng frame, xóa các frame quay hỏng, hoặc mở trình chỉnh sửa lệnh.
+* **Vẽ đường bay trực quan (Visual Pathing):** Dùng lệnh `/cinematic path <name>` để vẽ ra quỹ đạo bay bằng hạt lửa (Flame) và hướng nhìn (End Rod) trong 10 giây để dễ dàng bắt lỗi.
+* **Gắn lệnh vào Frame:** Tự động chạy lệnh server khi camera bay đến một khung hình cụ thể (Hỗ trợ biến `%player%`).
+* **Lưu trữ tối ưu:** Mỗi cinematic được lưu thành một file `.json` riêng tại `plugins/ExtralyCinematic/cinematics/`.
+
+### 📥 Hướng dẫn Cài đặt
+1. Bỏ file `.jar` của plugin vào thư mục `plugins/` của server.
+2. Khởi động lại server để plugin tạo các thư mục và file cấu hình mặc định.
+
+### ⚙️ Cấu hình (`config.yml`)
+Bạn có thể tinh chỉnh độ mượt và hiệu năng của plugin thông qua file `plugins/ExtralyCinematic/config.yml`.
+
+```yaml
+# Số bước chia nhỏ (nội suy) giữa 2 khung hình (frame).
+# Số càng TO = Camera bay càng mượt, nhưng server phải gửi nhiều packet dịch chuyển hơn (có thể gây giật nhẹ cho người chơi ping cao).
+# Số càng NHỎ = Ít tốn tài nguyên server hơn, nhưng camera có thể không mượt bằng.
+# Mức khuyến nghị mặc định: 10
+interpolation-steps: 10
+```
 
 ### 📜 Lệnh & Quyền hạn (Permissions)
-*Quyền yêu cầu cho tất cả các lệnh: `cinematic.cmd`*
+*Tất cả các lệnh đều yêu cầu quyền: `cinematic.cmd`*
 
 | Lệnh | Mô tả |
 |---|---|
-| `/cinematic rec <name> <giây>` | Ghi hình theo thời gian cố định (Có đếm ngược). |
-| `/cinematic record start <name>` | Bắt đầu ghi hình tự do. |
-| `/cinematic record stop` | Kết thúc quá trình ghi hình tự do. |
+| `/cinematic record start <name>` | Bắt đầu ghi hình tự do. Bay lượn để lưu frame. |
+| `/cinematic record stop` | Dừng và lưu lại quá trình ghi hình tự do. |
+| `/cinematic rec <name> <giây>` | Ghi hình theo thời gian đếm ngược chỉ định sẵn. |
 | `/cinematic play <player> <name>` | Phát cinematic cho người chơi xem. |
-| `/cinematic stop <player>` | Ép dừng cinematic của một người chơi. |
-| `/cinematic path <name>` | Hiển thị đường bay bằng Particle. |
-| `/cinematic edit` | Mở giao diện GUI để chỉnh sửa cinematic. |
+| `/cinematic stop <player>` | Ép dừng cinematic của người chơi và trả họ về chỗ cũ. |
+| `/cinematic path <name>` | Hiển thị đường bay bằng Particle trong 10 giây. |
+| `/cinematic edit` | **[KHUYÊN DÙNG]** Mở giao diện GUI để thao tác mọi thứ. |
 | `/cinematic list` | Liệt kê danh sách cinematic đang có. |
-| `/cinematic delete <name>` | Xóa cinematic (Có thể làm trực tiếp trong GUI). |
-| `/cinematic addcmd <name> <frame> <cmd>` | Gắn 1 lệnh vào một khung hình cụ thể. |
+| `/cinematic delete <name>` | Xóa hoàn toàn một cinematic. |
 
-### 🚀 Hướng dẫn nhanh
-1. Dùng lệnh `/cinematic record start MyIntro`.
-2. Bay lượn xung quanh để plugin ghi lại các khung hình.
-3. Dùng lệnh `/cinematic record stop` để kết thúc quay.
-4. (Tùy chọn) Gõ `/cinematic path MyIntro` để nhìn trực quan đường bay bạn vừa quay bằng Particle.
-5. (Tùy chọn) Gõ `/cinematic edit`, bấm vào `MyIntro` để dịch chuyển đến từng frame, xóa các frame bị lỗi, hoặc gắn lệnh vào frame.
-6. Gõ `/cinematic play <player> MyIntro` để tận hưởng thành quả!
+### 🚀 Hướng dẫn Quy trình Sử dụng Nhanh
+1. Bay đến điểm xuất phát, gõ `/cinematic record start Intro`.
+2. Bay lượn từ từ theo quỹ đạo bạn muốn. Cứ thoải mái, thuật toán của plugin sẽ tự làm mượt các đoạn run tay!
+3. Gõ `/cinematic record stop` khi hoàn thành.
+4. Gõ `/cinematic edit` và bấm vào biểu tượng Mắt Ender để kiểm tra lại đường bay. Xóa các frame thừa/hỏng nếu cần.
+5. Gõ `/cinematic play <player> Intro` để phát thử!
