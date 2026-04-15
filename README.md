@@ -1,7 +1,7 @@
 # 🎥 ExtralyCinematic
 
-> A lightweight, smooth, and feature-rich recording and playback plugin for Paper servers.
-> 
+> A lightweight, smooth, and feature-rich recording and playback plugin for Paper servers (1.21.x Ready).
+>
 > *[Cuộn xuống để xem phiên bản Tiếng Việt / Scroll down for the Vietnamese version](#-phiên-bản-tiếng-việt-vietnamese-version)*
 
 ---
@@ -13,6 +13,9 @@
 ### ✨ Key Features
 * **Smooth Camera Pathing (Catmull-Rom Spline):** Replaces rigid linear interpolation with advanced mathematical curves. The camera gracefully glides through corners without jarring snaps or robotic movements.
 * **Smart Angle Wrapping:** Automatically calculates the shortest rotation path to prevent the camera from violently snapping 360 degrees when looking around.
+* **🎯 Focus Target:** Force the camera to automatically look at a specific coordinate/target while flying along its path. Perfect for orbiting around builds or players.
+* **🫨 Camera Shake:** Add dynamic, adjustable camera shake for intense moments like explosions or boss spawns.
+* **▶️ Auto-Play Intro:** Automatically play a specific cinematic when a player joins the server for the very first time.
 * **In-Game GUI Editor:** Type `/cinematic edit` to access a clean, paginated inventory GUI where you can teleport to frames, delete bad frames, and open the Command Editor.
 * **Visual Path Debugging:** Use `/cinematic path <name>` (or click the Ender Eye in the GUI) to spawn a 10-second particle trail outlining the exact flight path.
 * **Command Triggers on Frames:** Attach server commands (with `%player%` support) to specific keyframes.
@@ -20,18 +23,22 @@
 
 ### 📥 Installation & Setup
 1. Download the compiled `.jar` file.
-2. Place it into your server's `plugins/` directory.
+2. Place it into your server's `plugins/` directory (Requires Paper/Spigot 1.21+ and Java 21).
 3. Restart the server to generate the default configuration files.
 
 ### ⚙️ Configuration (`config.yml`)
-You can fine-tune the plugin's performance and smoothness by editing `plugins/ExtralyCinematic/config.yml`.
+You can fine-tune the plugin's performance and auto-play features by editing `plugins/ExtralyCinematic/config.yml`.
 
 ```yaml
 # The number of interpolation steps between two frames.
-# Higher value = Smoother camera movement, but requires more teleport packets (can cause slight lag for players with high ping).
+# Higher value = Smoother camera movement, but requires more teleport packets.
 # Lower value = Less packets sent, but movement might look a bit rigid.
 # Recommended default: 10
 interpolation-steps: 10
+
+# The name of the Cinematic that will AUTOMATICALLY play when a new player joins.
+# Leave empty ("") if you want to disable this feature.
+auto-play-on-first-join: "Intro"
 ```
 
 ### 📜 Commands & Permissions
@@ -45,37 +52,45 @@ interpolation-steps: 10
 | `/cinematic play <player> <name>` | Play a cinematic for a specific player. |
 | `/cinematic stop <player>` | Force-stop an ongoing cinematic for a player. |
 | `/cinematic path <name>` | Visualize the camera path using particles in-game. |
+| `/cinematic focus <name> set\|clear` | Set the camera to always look at your current location, or clear it. |
+| `/cinematic shake <name> <intensity>` | Add camera shake effect (e.g., 5 is heavy, 0 to disable). |
 | `/cinematic edit` | **[RECOMMENDED]** Open the main GUI Editor to manage everything. |
 | `/cinematic list` | List all available cinematics in chat. |
 | `/cinematic delete <name>` | Delete a cinematic file completely. |
+| `/cinematic addcmd <name> <frame> <cmd>` | Add a command to a specific frame (Do not include `/`). |
 
 ---
 
 ## 🇻🇳 PHIÊN BẢN TIẾNG VIỆT (VIETNAMESE VERSION)
 
-**ExtralyCinematic** là một plugin siêu nhẹ và hiệu năng cao dành cho các server Paper. Plugin giúp quản trị viên ghi lại quỹ đạo bay và phát lại cho người chơi xem dưới dạng các đoạn cắt cảnh (cinematic) mượt mà như trong phim.
+**ExtralyCinematic** là một plugin siêu nhẹ và hiệu năng cao dành cho các server Paper (Hỗ trợ 1.21.x). Plugin giúp quản trị viên ghi lại quỹ đạo bay và phát lại cho người chơi xem dưới dạng các đoạn cắt cảnh (cinematic) mượt mà như trong phim.
 
 ### ✨ Tính năng nổi bật
 * **Camera siêu mượt (Catmull-Rom Spline):** Loại bỏ hoàn toàn sự giật cục của di chuyển đường thẳng (Linear). Camera uốn lượn qua các góc cua mượt mà giống hệt như dùng ReplayMod.
 * **Chống lật camera (Smart Angle Wrapping):** Tự động tính toán góc quay ngắn nhất, ngăn chặn lỗi camera bị giật xoay tròn 360 độ.
+* **🎯 Khóa Mục Tiêu (Focus Target):** Ép camera luôn luôn quay mặt về một tọa độ nhất định trong khi bay. Cực kỳ hoàn hảo để quay quanh các công trình.
+* **🫨 Hiệu ứng Rung lắc (Camera Shake):** Thêm hiệu ứng rung lắc kịch tính cho các phân cảnh cháy nổ, đánh boss.
+* **▶️ Tự động phát Intro:** Tự động bắt người chơi xem một đoạn Cinematic giới thiệu khi họ lần đầu tiên tham gia server.
 * **Trình quản lý GUI (In-Game Editor):** Dùng `/cinematic edit` để mở giao diện quản lý. Bạn có thể dịch chuyển đến từng frame, xóa các frame quay hỏng, hoặc mở trình chỉnh sửa lệnh.
 * **Vẽ đường bay trực quan (Visual Pathing):** Dùng lệnh `/cinematic path <name>` để vẽ ra quỹ đạo bay bằng hạt lửa (Flame) và hướng nhìn (End Rod) trong 10 giây để dễ dàng bắt lỗi.
 * **Gắn lệnh vào Frame:** Tự động chạy lệnh server khi camera bay đến một khung hình cụ thể (Hỗ trợ biến `%player%`).
 * **Lưu trữ tối ưu:** Mỗi cinematic được lưu thành một file `.json` riêng tại `plugins/ExtralyCinematic/cinematics/`.
 
 ### 📥 Hướng dẫn Cài đặt
-1. Bỏ file `.jar` của plugin vào thư mục `plugins/` của server.
+1. Bỏ file `.jar` của plugin vào thư mục `plugins/` của server (Yêu cầu Java 21).
 2. Khởi động lại server để plugin tạo các thư mục và file cấu hình mặc định.
 
 ### ⚙️ Cấu hình (`config.yml`)
-Bạn có thể tinh chỉnh độ mượt và hiệu năng của plugin thông qua file `plugins/ExtralyCinematic/config.yml`.
+Bạn có thể tinh chỉnh độ mượt và tính năng tự động phát thông qua file `plugins/ExtralyCinematic/config.yml`.
 
 ```yaml
 # Số bước chia nhỏ (nội suy) giữa 2 khung hình (frame).
-# Số càng TO = Camera bay càng mượt, nhưng server phải gửi nhiều packet dịch chuyển hơn (có thể gây giật nhẹ cho người chơi ping cao).
-# Số càng NHỎ = Ít tốn tài nguyên server hơn, nhưng camera có thể không mượt bằng.
 # Mức khuyến nghị mặc định: 10
 interpolation-steps: 10
+
+# Tên của Cinematic sẽ TỰ ĐỘNG CHIẾU khi người chơi lần đầu tiên vào server.
+# Để trống ("") nếu bạn muốn tắt tính năng này.
+auto-play-on-first-join: "Intro"
 ```
 
 ### 📜 Lệnh & Quyền hạn (Permissions)
@@ -89,13 +104,17 @@ interpolation-steps: 10
 | `/cinematic play <player> <name>` | Phát cinematic cho người chơi xem. |
 | `/cinematic stop <player>` | Ép dừng cinematic của người chơi và trả họ về chỗ cũ. |
 | `/cinematic path <name>` | Hiển thị đường bay bằng Particle trong 10 giây. |
+| `/cinematic focus <name> set\|clear` | Khóa hướng nhìn của camera vào vị trí bạn đang đứng, hoặc xóa bỏ. |
+| `/cinematic shake <name> <cường_độ>` | Thêm hiệu ứng rung lắc (vd: 5 là mạnh, 0 là tắt). |
 | `/cinematic edit` | **[KHUYÊN DÙNG]** Mở giao diện GUI để thao tác mọi thứ. |
 | `/cinematic list` | Liệt kê danh sách cinematic đang có. |
 | `/cinematic delete <name>` | Xóa hoàn toàn một cinematic. |
+| `/cinematic addcmd <name> <frame> <cmd>` | Gắn 1 lệnh vào khung hình (Không nhập dấu `/`). |
 
 ### 🚀 Hướng dẫn Quy trình Sử dụng Nhanh
 1. Bay đến điểm xuất phát, gõ `/cinematic record start Intro`.
 2. Bay lượn từ từ theo quỹ đạo bạn muốn. Cứ thoải mái, thuật toán của plugin sẽ tự làm mượt các đoạn run tay!
 3. Gõ `/cinematic record stop` khi hoàn thành.
-4. Gõ `/cinematic edit` và bấm vào biểu tượng Mắt Ender để kiểm tra lại đường bay. Xóa các frame thừa/hỏng nếu cần.
-5. Gõ `/cinematic play <player> Intro` để phát thử!
+4. (Tùy chọn) Đứng tại 1 điểm, gõ `/cinematic focus Intro set` nếu muốn camera luôn nhìn về điểm đó.
+5. Gõ `/cinematic edit` và bấm vào biểu tượng Mắt Ender để kiểm tra lại đường bay. Xóa các frame thừa/hỏng nếu cần.
+6. Gõ `/cinematic play <player> Intro` để phát thử!
