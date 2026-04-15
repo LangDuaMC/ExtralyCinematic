@@ -1,9 +1,9 @@
-package me.aleiv.core.paper;
+package pluginsmc.langdua.core.paper;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import me.aleiv.core.paper.events.GameTickEvent;
-import me.aleiv.core.paper.objects.Cinematic;
+import pluginsmc.langdua.core.paper.events.GameTickEvent;
+import pluginsmc.langdua.core.paper.objects.Cinematic;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitRunnable;
 

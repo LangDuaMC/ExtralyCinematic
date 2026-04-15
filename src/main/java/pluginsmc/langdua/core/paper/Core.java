@@ -1,4 +1,4 @@
-package me.aleiv.core.paper;
+package pluginsmc.langdua.core.paper;
 
 import co.aikar.commands.PaperCommandManager;
 import co.aikar.taskchain.BukkitTaskChainFactory;
@@ -6,10 +6,10 @@ import co.aikar.taskchain.TaskChain;
 import co.aikar.taskchain.TaskChainFactory;
 import lombok.Getter;
 import lombok.Setter;
-import me.aleiv.core.paper.commands.CinematicCMD;
-import me.aleiv.core.paper.guis.CinematicGUI;
-import me.aleiv.core.paper.listeners.GlobalListener;
-import me.aleiv.core.paper.listeners.GuiListener;
+import pluginsmc.langdua.core.paper.commands.CinematicCMD;
+import pluginsmc.langdua.core.paper.guis.CinematicGUI;
+import pluginsmc.langdua.core.paper.listeners.GlobalListener;
+import pluginsmc.langdua.core.paper.listeners.GuiListener;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 

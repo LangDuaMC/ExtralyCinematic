@@ -1,4 +1,4 @@
-package me.aleiv.core.paper.events;
+package pluginsmc.langdua.core.paper.events;
 
 import lombok.Getter;
 import org.bukkit.event.Event;

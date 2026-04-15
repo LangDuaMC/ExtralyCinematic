@@ -1,4 +1,4 @@
-package me.aleiv.core.paper.objects;
+package pluginsmc.langdua.core.paper.objects;
 
 import lombok.Data;
 
