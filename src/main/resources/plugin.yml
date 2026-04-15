@@ -1,4 +1,4 @@
-name: CinematicCore
+name: ExtralyCinematic
 version: ${version}
 main: pluginsmc.langdua.core.paper.Core
 api-version: "1.21"
