@@ -5,6 +5,7 @@ import co.aikar.commands.annotation.*;
 import co.aikar.taskchain.TaskChain;
 import lombok.NonNull;
 import me.aleiv.core.paper.Core;
+import me.aleiv.core.paper.guis.CinematicGUI;
 import me.aleiv.core.paper.objects.Cinematic;
 import me.aleiv.core.paper.objects.Frame;
 import net.md_5.bungee.api.ChatColor;
@@ -16,14 +17,20 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @CommandAlias("cinematic")
 @CommandPermission("cinematic.cmd")
 public class CinematicCMD extends BaseCommand {
 
     private @NonNull Core instance;
+    private Map<UUID, Cinematic> activeRecordings = new HashMap<>();
+    private Map<UUID, BukkitRunnable> activeRecordingTasks = new HashMap<>();
 
     public CinematicCMD(Core instance) {
         this.instance = instance;
@@ -49,6 +56,8 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("rec")
+    @Description("Records a new cinematic.")
+    @CommandCompletion("<name> <seconds>")
     public void rec(Player sender, String cinematic, int seconds) {
         var game = instance.getGame();
         var cinematics = game.getCinematics();
@@ -81,8 +90,79 @@ public class CinematicCMD extends BaseCommand {
         }
     }
 
+    @Subcommand("record start")
+    @Description("Starts recording a new cinematic on-the-fly.")
+    @CommandCompletion("<name>")
+    public void recordStart(Player player, String cinematicName) {
+        UUID playerUUID = player.getUniqueId();
+        var game = instance.getGame();
+        var cinematics = game.getCinematics();
+
+        if (activeRecordings.containsKey(playerUUID)) {
+            player.sendMessage(ChatColor.RED + "You are already recording a cinematic. Stop it before starting a new one.");
+            return;
+        }
+
+        if (cinematics.containsKey(cinematicName)) {
+            player.sendMessage(ChatColor.RED + "A cinematic with this name already exists.");
+            return;
+        }
+
+        Cinematic newCinematic = new Cinematic(cinematicName);
+        cinematics.put(cinematicName, newCinematic);
+        activeRecordings.put(playerUUID, newCinematic);
+
+        player.sendMessage(ChatColor.GREEN + "Started recording cinematic '" + cinematicName + "'. Move around to capture frames.");
+
+        BukkitRunnable recordingTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline() || !activeRecordings.containsKey(playerUUID)) {
+                    cancel();
+                    activeRecordings.remove(playerUUID);
+                    activeRecordingTasks.remove(playerUUID);
+                    player.sendMessage(ChatColor.RED + "Recording stopped due to disconnect or error.");
+                    return;
+                }
+
+                Location loc = player.getLocation().clone();
+                Frame frame = new Frame(loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
+                newCinematic.getFrames().add(frame);
+                player.sendActionBar(ChatColor.YELLOW + "Recording... Frame count: " + newCinematic.getFrames().size());
+            }
+        };
+        // Record every tick (20 times per second)
+        recordingTask.runTaskTimer(instance, 0L, 1L);
+        activeRecordingTasks.put(playerUUID, recordingTask);
+    }
+
+    @Subcommand("record stop")
+    @Description("Stops the current on-the-fly cinematic recording.")
+    public void recordStop(Player player) {
+        UUID playerUUID = player.getUniqueId();
+
+        if (!activeRecordings.containsKey(playerUUID)) {
+            player.sendMessage(ChatColor.RED + "You are not recording any cinematic.");
+            return;
+        }
+
+        BukkitRunnable task = activeRecordingTasks.remove(playerUUID);
+        if (task != null) {
+            task.cancel();
+        }
+
+        Cinematic cinematic = activeRecordings.remove(playerUUID);
+        if (cinematic != null) {
+            instance.getStorageManager().save(instance.getGame().getCinematics());
+            player.sendMessage(ChatColor.GREEN + "Stopped recording cinematic '" + cinematic.getName() + "'. Total frames: " + cinematic.getFrames().size());
+        } else {
+            player.sendMessage(ChatColor.RED + "An error occurred while stopping the recording.");
+        }
+    }
+
     @Subcommand("play")
-    @CommandCompletion("@players")
+    @Description("Plays an existing cinematic for a player.")
+    @CommandCompletion("@players <name>")
     public void play(CommandSender sender, @Flags("other") Player player, String cinematic) {
         var game = instance.getGame();
         var cinematics = game.getCinematics();
@@ -224,6 +304,7 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("stop")
+    @Description("Stops a cinematic for a specific player.")
     @CommandCompletion("@players")
     public void stop(CommandSender sender, @Flags("other") Player player) {
         var game = instance.getGame();
@@ -236,6 +317,8 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("delete")
+    @Description("Deletes an existing cinematic.")
+    @CommandCompletion("<name>")
     public void delete(CommandSender sender, String cinematic) {
         var game = instance.getGame();
         var cinematics = game.getCinematics();
@@ -250,6 +333,8 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("addcmd")
+    @Description("Adds a command to a specific frame of a cinematic.")
+    @CommandCompletion("<name> <frameIndex> <command>")
     public void addCmd(CommandSender sender, String cinematic, int frameIndex, String command) {
         var game = instance.getGame();
         var cinematics = game.getCinematics();
@@ -268,5 +353,44 @@ public class CinematicCMD extends BaseCommand {
         cine.getFrames().get(frameIndex).getCommands().add(command);
         instance.getStorageManager().save(cinematics);
         sender.sendMessage(ChatColor.GREEN + "Add command to frame" + frameIndex + cinematic + ": /" + command);
+    }
+
+    @Subcommand("list")
+    @Description("Lists all available cinematics.")
+    public void listCinematics(CommandSender sender) {
+        var cinematics = instance.getGame().getCinematics();
+        if (cinematics.isEmpty()) {
+            sender.sendMessage(ChatColor.YELLOW + "No cinematics found.");
+            return;
+        }
+
+        sender.sendMessage(ChatColor.GOLD + "--- Available Cinematics ---");
+        cinematics.keySet().forEach(name -> sender.sendMessage(ChatColor.YELLOW + "- " + name));
+        sender.sendMessage(ChatColor.GOLD + "--------------------------");
+    }
+
+    @Subcommand("edit")
+    @Description("Opens the cinematic editor GUI.")
+    public void edit(Player player) {
+        CinematicGUI cinematicGUI = new CinematicGUI(instance);
+        player.openInventory(cinematicGUI.getCinematicListGUI(player));
+    }
+
+    @HelpCommand
+    @Subcommand("help")
+    @Description("Displays help for Cinematic commands.")
+    public void help(CommandSender sender) {
+        sender.sendMessage(ChatColor.GOLD + "--- Cinematic Commands ---");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic rec <name> <seconds>" + ChatColor.GRAY + " - Records a new cinematic (old method).");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic record start <name>" + ChatColor.GRAY + " - Starts recording a new cinematic on-the-fly.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic record stop" + ChatColor.GRAY + " - Stops the current on-the-fly cinematic recording.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic play <player> <name>" + ChatColor.GRAY + " - Plays an existing cinematic for a player.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic stop <player>" + ChatColor.GRAY + " - Stops a cinematic for a specific player.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic delete <name>" + ChatColor.GRAY + " - Deletes an existing cinematic.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic addcmd <name> <frameIndex> <command>" + ChatColor.GRAY + " - Adds a command to a specific frame.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic list" + ChatColor.GRAY + " - Lists all available cinematics.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic edit" + ChatColor.GRAY + " - Opens the cinematic editor GUI.");
+        sender.sendMessage(ChatColor.YELLOW + "/cinematic help" + ChatColor.GRAY + " - Displays this help message.");
+        sender.sendMessage(ChatColor.GOLD + "--------------------------");
     }
 }

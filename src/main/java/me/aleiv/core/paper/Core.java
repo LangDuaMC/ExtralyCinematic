@@ -7,7 +7,9 @@ import co.aikar.taskchain.TaskChainFactory;
 import lombok.Getter;
 import lombok.Setter;
 import me.aleiv.core.paper.commands.CinematicCMD;
+import me.aleiv.core.paper.guis.CinematicGUI;
 import me.aleiv.core.paper.listeners.GlobalListener;
+import me.aleiv.core.paper.listeners.GuiListener;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -20,6 +22,7 @@ public class Core extends JavaPlugin {
     private @Getter PaperCommandManager commandManager;
     private @Getter StorageManager storageManager;
     private @Getter int interpolationSteps;
+    private @Getter CinematicGUI cinematicGUI;
 
     public static <T> TaskChain<T> newChain() {
         return taskChainFactory.newChain();
@@ -43,8 +46,11 @@ public class Core extends JavaPlugin {
 
         taskChainFactory = BukkitTaskChainFactory.create(this);
         Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new GuiListener(this), this); // Register GuiListener
         commandManager = new PaperCommandManager(this);
         commandManager.registerCommand(new CinematicCMD(this));
+
+        cinematicGUI = new CinematicGUI(this); // Initialize CinematicGUI
     }
 
     @Override
