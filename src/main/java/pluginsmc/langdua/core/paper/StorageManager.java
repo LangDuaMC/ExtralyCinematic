@@ -1,79 +1,101 @@
 package pluginsmc.langdua.core.paper;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import org.bukkit.configuration.file.YamlConfiguration;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
+import pluginsmc.langdua.core.paper.objects.Frame;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class StorageManager {
-    private final Core plugin;
+    private final Core instance;
     private final File folder;
-    private final Gson gson;
 
-    public StorageManager(Core plugin) {
-        this.plugin = plugin;
-        this.folder = new File(plugin.getDataFolder(), "cinematics");
-        this.gson = new GsonBuilder().setPrettyPrinting().create();
-
-        if (!this.folder.exists()) {
-            this.folder.mkdirs();
-        }
+    public StorageManager(Core instance) {
+        this.instance = instance;
+        this.folder = new File(instance.getDataFolder(), "cinematics");
+        if (!folder.exists()) folder.mkdirs();
     }
 
-    public void save(HashMap<String, Cinematic> cinematics) {
-        if (!folder.exists()) {
-            folder.mkdirs();
-        }
+    public void save(Map<String, Cinematic> cinematics) {
+        for (Cinematic cine : cinematics.values()) {
+            File file = new File(folder, cine.getName() + ".yml");
+            YamlConfiguration config = new YamlConfiguration();
 
-        // Save active cinematics to individual files
-        for (Cinematic cinematic : cinematics.values()) {
-            File file = new File(folder, cinematic.getName() + ".json");
-            try (FileWriter writer = new FileWriter(file)) {
-                gson.toJson(cinematic, writer);
+            config.set("name", cine.getName());
+            config.set("bgm", cine.getBgmSound());
+            config.set("shake", cine.getShakeIntensity());
+            config.set("zoom.start", cine.getStartZoom());
+            config.set("zoom.end", cine.getEndZoom());
+            config.set("duration", cine.getDuration()); // Save duration
+
+            if (cine.hasFocus()) {
+                config.set("focus.world", cine.getFocusWorld());
+                config.set("focus.x", cine.getFocusX());
+                config.set("focus.y", cine.getFocusY());
+                config.set("focus.z", cine.getFocusZ());
+            }
+
+            List<Map<String, Object>> frameList = new ArrayList<>();
+            for (Frame f : cine.getFrames()) {
+                Map<String, Object> fMap = new HashMap<>();
+                fMap.put("w", f.getWorld());
+                fMap.put("x", f.getX());
+                fMap.put("y", f.getY());
+                fMap.put("z", f.getZ());
+                fMap.put("yaw", (double) f.getYaw());
+                fMap.put("pitch", (double) f.getPitch());
+                fMap.put("cmds", f.getCommands());
+                fMap.put("title", f.getTitle());
+                fMap.put("subtitle", f.getSubtitle());
+                frameList.add(fMap);
+            }
+            config.set("frames", frameList);
+
+            try {
+                config.save(file);
             } catch (IOException e) {
-                plugin.getLogger().severe("Failed to save cinematic: " + cinematic.getName());
                 e.printStackTrace();
             }
         }
-
-        // Remove files for cinematics that were deleted in-game
-        File[] files = folder.listFiles((dir, name) -> name.endsWith(".json"));
-        if (files != null) {
-            for (File file : files) {
-                String name = file.getName().replace(".json", "");
-                if (!cinematics.containsKey(name)) {
-                    file.delete();
-                }
-            }
-        }
     }
 
-    public HashMap<String, Cinematic> load() {
-        HashMap<String, Cinematic> data = new HashMap<>();
-
-        if (!folder.exists() || !folder.isDirectory()) {
-            return data;
-        }
-
-        File[] files = folder.listFiles((dir, name) -> name.endsWith(".json"));
-        if (files == null) return data;
+    public Map<String, Cinematic> load() {
+        Map<String, Cinematic> cinematics = new HashMap<>();
+        File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (files == null) return cinematics;
 
         for (File file : files) {
-            try (FileReader reader = new FileReader(file)) {
-                Cinematic cinematic = gson.fromJson(reader, Cinematic.class);
-                if (cinematic != null && cinematic.getName() != null) {
-                    data.put(cinematic.getName(), cinematic);
-                }
-            } catch (Exception e) {
-                plugin.getLogger().severe("Failed to load cinematic file: " + file.getName());
-                e.printStackTrace();
+            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+            String name = config.getString("name");
+            Cinematic cine = new Cinematic(name);
+
+            cine.setBgmSound(config.getString("bgm"));
+            cine.setShakeIntensity(config.getDouble("shake"));
+            cine.setStartZoom(config.getInt("zoom.start"));
+            cine.setEndZoom(config.getInt("zoom.end"));
+            cine.setDuration(config.getInt("duration", 0)); // Load duration
+
+            if (config.contains("focus")) {
+                cine.setFocus(config.getString("focus.world"), config.getDouble("focus.x"), config.getDouble("focus.y"), config.getDouble("focus.z"));
             }
+
+            List<Map<?, ?>> frameMaps = config.getMapList("frames");
+            List<Frame> frames = new ArrayList<>();
+            for (Map<?, ?> m : frameMaps) {
+                Frame f = new Frame((String) m.get("w"), (Double) m.get("x"), (Double) m.get("y"), (Double) m.get("z"), ((Double) m.get("yaw")).floatValue(), ((Double) m.get("pitch")).floatValue());
+                if (m.containsKey("cmds")) f.setCommands((List<String>) m.get("cmds"));
+                if (m.containsKey("title")) f.setTitle((String) m.get("title"));
+                if (m.containsKey("subtitle")) f.setSubtitle((String) m.get("subtitle"));
+                frames.add(f);
+            }
+            cine.setFrames(frames);
+            cinematics.put(name, cine);
         }
-        return data;
+        return cinematics;
     }
 }

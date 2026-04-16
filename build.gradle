@@ -1,6 +1,8 @@
 plugins {
     id 'java'
     id 'io.github.goooler.shadow' version '8.1.8'
+    // Plugin to run paper server directly from IDE
+    id 'xyz.jpenilla.run-paper' version '2.3.0'
 }
 
 group = 'pluginsmc.langdua'
@@ -13,6 +15,11 @@ repositories {
     mavenCentral()
     maven { url = 'https://repo.papermc.io/repository/maven-public/' }
     maven { url = 'https://repo.aikar.co/content/groups/aikar/' }
+
+    // Thêm 3 Repo này cho PAPI, WorldGuard, MythicMobs
+    maven { url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
+    maven { url = 'https://maven.enginehub.org/repo/' }
+    maven { url = 'https://mvn.lumine.io/repository/maven-public/' }
 }
 
 dependencies {
@@ -26,13 +33,23 @@ dependencies {
     // ACF & TaskChain
     implementation 'co.aikar:acf-paper:0.5.1-SNAPSHOT'
     implementation 'co.aikar:taskchain-bukkit:3.7.2'
+
+    // MiniMessage
+    implementation "net.kyori:adventure-api:4.17.0"
+    implementation "net.kyori:adventure-text-minimessage:4.17.0"
+    implementation "net.kyori:adventure-platform-bukkit:4.3.3"
+
+    //Hooking
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+    compileOnly 'com.sk89q.worldguard:worldguard-bukkit:7.0.9'
+    compileOnly 'io.lumine:Mythic-Dist:5.6.2'
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-// Xử lý plugin.yml cực chuẩn, không bao giờ bị nuốt file
+// Ensure plugin.yml is processed correctly
 processResources {
     def props = [version: version]
     inputs.properties props
@@ -50,3 +67,18 @@ shadowJar {
 }
 
 build.dependsOn shadowJar
+
+// RunServer Configuration
+tasks.runServer {
+    // Set Minecraft version
+    minecraftVersion("1.21.11")
+
+    // Auto-accept EULA
+    runDirectory(file("run"))
+
+    // Auto-download external plugins for testing
+    downloadPlugins {
+        // Download EssentialsX directly from official release
+        url("https://github.com/EssentialsX/Essentials/releases/download/2.20.1/EssentialsX-2.20.1.jar")
+    }
+}

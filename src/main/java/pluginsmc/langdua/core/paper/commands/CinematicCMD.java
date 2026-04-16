@@ -3,11 +3,9 @@ package pluginsmc.langdua.core.paper.commands;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.*;
 import lombok.NonNull;
-import pluginsmc.langdua.core.paper.Core;
-import pluginsmc.langdua.core.paper.guis.CinematicGUI;
-import pluginsmc.langdua.core.paper.objects.Cinematic;
-import pluginsmc.langdua.core.paper.objects.Frame;
-import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -20,7 +18,14 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import pluginsmc.langdua.core.paper.Core;
+import pluginsmc.langdua.core.paper.MessageManager;
+import pluginsmc.langdua.core.paper.guis.CinematicGUI;
+import pluginsmc.langdua.core.paper.hooks.PapiHook;
+import pluginsmc.langdua.core.paper.objects.Cinematic;
+import pluginsmc.langdua.core.paper.objects.Frame;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,11 +36,13 @@ import java.util.UUID;
 public class CinematicCMD extends BaseCommand {
 
     private @NonNull Core instance;
+    private MessageManager msg;
     private Map<UUID, Cinematic> activeRecordings = new HashMap<>();
     private Map<UUID, BukkitRunnable> activeRecordingTasks = new HashMap<>();
 
     public CinematicCMD(Core instance) {
         this.instance = instance;
+        this.msg = instance.getMessageManager();
     }
 
     public void record(Player player, List<Frame> frames, int seconds) {
@@ -51,7 +58,7 @@ public class CinematicCMD extends BaseCommand {
                 }
                 if (elapsedTicks >= totalTicks) {
                     instance.getStorageManager().save(instance.getGame().getCinematics());
-                    player.sendMessage(ChatColor.GREEN + "Recording finished! Saved " + frames.size() + " keyframes.");
+                    msg.send(player, "record.finish", "count", String.valueOf(frames.size()));
                     this.cancel();
                     return;
                 }
@@ -62,8 +69,7 @@ public class CinematicCMD extends BaseCommand {
                 }
 
                 if (elapsedTicks % 20 == 0) {
-                    int c = elapsedTicks / 20;
-                    player.sendActionBar(ChatColor.YELLOW + "Recording: " + c + "/" + seconds + "s");
+                    msg.sendActionBar(player, "record.actionbar-timer", "current", String.valueOf(elapsedTicks / 20), "total", String.valueOf(seconds));
                 }
                 elapsedTicks++;
             }
@@ -71,14 +77,11 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("rec")
-    @Description("Records a new cinematic with countdown.")
     @CommandCompletion("<name> <seconds>")
     public void rec(Player sender, String cinematic, int seconds) {
-        var game = instance.getGame();
-        var cinematics = game.getCinematics();
-
+        var cinematics = instance.getGame().getCinematics();
         if (cinematics.containsKey(cinematic)) {
-            sender.sendMessage(ChatColor.RED + "Cinematic already exist.");
+            msg.send(sender, "error.already-exist", "name", cinematic);
             return;
         }
 
@@ -88,6 +91,7 @@ public class CinematicCMD extends BaseCommand {
 
         new BukkitRunnable() {
             int count = 3;
+
             @Override
             public void run() {
                 if (!sender.isOnline()) {
@@ -95,12 +99,12 @@ public class CinematicCMD extends BaseCommand {
                     return;
                 }
                 if (count == 0) {
-                    sender.sendTitle(ChatColor.DARK_RED + "REC.", "", 0, 20, 20);
+                    msg.sendTitle(sender, "record.title-rec", null, 0, 20, 20);
                     sender.playSound(sender.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1, 1);
                     record(sender, frames, seconds);
                     this.cancel();
                 } else {
-                    sender.sendTitle(ChatColor.DARK_RED + "" + count, "", 0, 20, 20);
+                    msg.sendTitle(sender, "record.title-count", null, 0, 20, 20, "count", String.valueOf(count));
                     sender.playSound(sender.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BIT, 1, 1);
                     count--;
                 }
@@ -109,20 +113,18 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("record start")
-    @Description("Starts recording a new cinematic on-the-fly.")
     @CommandCompletion("<name>")
     public void recordStart(Player player, String cinematicName) {
         UUID playerUUID = player.getUniqueId();
-        var game = instance.getGame();
-        var cinematics = game.getCinematics();
+        var cinematics = instance.getGame().getCinematics();
 
         if (activeRecordings.containsKey(playerUUID)) {
-            player.sendMessage(ChatColor.RED + "You are already recording a cinematic. Stop it before starting a new one.");
+            msg.send(player, "error.already-recording");
             return;
         }
 
         if (cinematics.containsKey(cinematicName)) {
-            player.sendMessage(ChatColor.RED + "A cinematic with this name already exists.");
+            msg.send(player, "error.already-exist", "name", cinematicName);
             return;
         }
 
@@ -130,25 +132,24 @@ public class CinematicCMD extends BaseCommand {
         cinematics.put(cinematicName, newCinematic);
         activeRecordings.put(playerUUID, newCinematic);
 
-        player.sendMessage(ChatColor.GREEN + "Started recording cinematic '" + cinematicName + "'. Move around to capture frames.");
+        msg.send(player, "record.start-free", "name", cinematicName);
 
         BukkitRunnable recordingTask = new BukkitRunnable() {
             int tickCounter = 0;
+
             @Override
             public void run() {
                 if (!player.isOnline() || !activeRecordings.containsKey(playerUUID)) {
                     cancel();
                     activeRecordings.remove(playerUUID);
                     activeRecordingTasks.remove(playerUUID);
-                    player.sendMessage(ChatColor.RED + "Recording stopped due to disconnect or error.");
                     return;
                 }
 
                 if (tickCounter % instance.getInterpolationSteps() == 0) {
                     Location loc = player.getLocation().clone();
-                    Frame frame = new Frame(loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
-                    newCinematic.getFrames().add(frame);
-                    player.sendActionBar(ChatColor.YELLOW + "Recording... Keyframes: " + newCinematic.getFrames().size());
+                    newCinematic.getFrames().add(new Frame(loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch()));
+                    msg.sendActionBar(player, "record.actionbar-free", "count", String.valueOf(newCinematic.getFrames().size()));
                 }
                 tickCounter++;
             }
@@ -158,68 +159,82 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("record stop")
-    @Description("Stops the current on-the-fly cinematic recording.")
     public void recordStop(Player player) {
         UUID playerUUID = player.getUniqueId();
-
         if (!activeRecordings.containsKey(playerUUID)) {
-            player.sendMessage(ChatColor.RED + "You are not recording any cinematic.");
+            msg.send(player, "error.not-recording");
             return;
         }
 
         BukkitRunnable task = activeRecordingTasks.remove(playerUUID);
-        if (task != null) {
-            task.cancel();
-        }
+        if (task != null) task.cancel();
 
         Cinematic cinematic = activeRecordings.remove(playerUUID);
         if (cinematic != null) {
             instance.getStorageManager().save(instance.getGame().getCinematics());
-            player.sendMessage(ChatColor.GREEN + "Stopped recording cinematic '" + cinematic.getName() + "'. Total Keyframes: " + cinematic.getFrames().size());
-        } else {
-            player.sendMessage(ChatColor.RED + "An error occurred while stopping the recording.");
+            msg.send(player, "record.stop-free", "name", cinematic.getName(), "count", String.valueOf(cinematic.getFrames().size()));
         }
     }
 
+    @Subcommand("addframe")
+    @Description("Manually adds a waypoint (keyframe) at your current location.")
+    @CommandCompletion("<name>")
+    public void addFrame(Player player, String cinematicName) {
+        var cinematics = instance.getGame().getCinematics();
+        if (!cinematics.containsKey(cinematicName)) {
+            cinematics.put(cinematicName, new Cinematic(cinematicName));
+        }
+        Cinematic cine = cinematics.get(cinematicName);
+        Location loc = player.getLocation();
+        cine.getFrames().add(new Frame(loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch()));
+        instance.getStorageManager().save(cinematics);
+        msg.send(player, "edit.addframe", "name", cinematicName, "index", String.valueOf(cine.getFrames().size() - 1));
+    }
+
+    @Subcommand("duration")
+    @Description("Sets the total playback duration (in seconds). Perfect for waypoint mode.")
+    @CommandCompletion("<name> <seconds>")
+    public void duration(Player player, String cinematicName, int seconds) {
+        var cinematics = instance.getGame().getCinematics();
+        if (!cinematics.containsKey(cinematicName)) {
+            msg.send(player, "error.not-exist", "name", cinematicName);
+            return;
+        }
+        Cinematic cine = cinematics.get(cinematicName);
+        cine.setDuration(seconds);
+        instance.getStorageManager().save(cinematics);
+        msg.send(player, "edit.duration", "name", cinematicName, "val", String.valueOf(seconds));
+    }
+
     @Subcommand("path")
-    @Description("Visualizes the cinematic path with particles.")
     @CommandCompletion("<name>")
     public void path(Player player, String cinematicName) {
-        var game = instance.getGame();
-        var cinematics = game.getCinematics();
-
+        var cinematics = instance.getGame().getCinematics();
         if (!cinematics.containsKey(cinematicName)) {
-            player.sendMessage(ChatColor.RED + "Cinematic doesn't exist.");
+            msg.send(player, "error.not-exist", "name", cinematicName);
             return;
         }
 
-        var cine = cinematics.get(cinematicName);
-        var frames = cine.getFrames();
+        var frames = cinematics.get(cinematicName).getFrames();
+        if (frames.isEmpty()) return;
 
-        if (frames.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "Cinematic is empty.");
-            return;
-        }
-
-        player.sendMessage(ChatColor.AQUA + "[ExtralyCinematic] " + ChatColor.GREEN + "Visualizing path for 10 seconds...");
+        msg.send(player, "edit.path-visual");
 
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks > 200 || !player.isOnline()) {
                     this.cancel();
                     return;
                 }
-
                 for (int i = 0; i < frames.size(); i++) {
                     Frame f = frames.get(i);
                     org.bukkit.World world = Bukkit.getWorld(f.getWorld());
                     if (world == null) continue;
-
                     Location loc = new Location(world, f.getX(), f.getY(), f.getZ());
                     world.spawnParticle(org.bukkit.Particle.FLAME, loc, 1, 0, 0, 0, 0);
-
                     if (i % 10 == 0 || i == frames.size() - 1) {
                         Location dirLoc = loc.clone();
                         dirLoc.setYaw(f.getYaw());
@@ -234,110 +249,92 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("focus")
-    @Description("Sets a focus target for the cinematic camera.")
     @CommandCompletion("<name> set|clear")
     public void focus(Player player, String cinematicName, String action) {
         var cinematics = instance.getGame().getCinematics();
         if (!cinematics.containsKey(cinematicName)) {
-            player.sendMessage(ChatColor.RED + "Cinematic doesn't exist.");
+            msg.send(player, "error.not-exist", "name", cinematicName);
             return;
         }
 
         Cinematic cine = cinematics.get(cinematicName);
-
         if (action.equalsIgnoreCase("clear")) {
             cine.clearFocus();
-            instance.getStorageManager().save(cinematics);
-            player.sendMessage(ChatColor.GREEN + "Cleared focus target for " + cinematicName);
+            msg.send(player, "edit.focus-clear", "name", cinematicName);
         } else if (action.equalsIgnoreCase("set")) {
             Location loc = player.getLocation();
             cine.setFocus(loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
-            instance.getStorageManager().save(cinematics);
-            player.sendMessage(ChatColor.GREEN + "Set focus target for " + cinematicName + " at your current location.");
+            msg.send(player, "edit.focus-set", "name", cinematicName);
         }
+        instance.getStorageManager().save(cinematics);
     }
 
     @Subcommand("shake")
-    @Description("Sets the camera shake intensity.")
     @CommandCompletion("<name> <intensity>")
     public void shake(Player player, String cinematicName, double intensity) {
         var cinematics = instance.getGame().getCinematics();
         if (!cinematics.containsKey(cinematicName)) {
-            player.sendMessage(ChatColor.RED + "Cinematic doesn't exist.");
+            msg.send(player, "error.not-exist", "name", cinematicName);
             return;
         }
-
-        Cinematic cine = cinematics.get(cinematicName);
-        cine.setShakeIntensity(intensity);
+        cinematics.get(cinematicName).setShakeIntensity(intensity);
         instance.getStorageManager().save(cinematics);
-
-        player.sendMessage(ChatColor.GREEN + "Set shake intensity for " + cinematicName + " to " + intensity);
+        msg.send(player, "edit.shake-set", "name", cinematicName, "val", String.valueOf(intensity));
     }
 
     @Subcommand("zoom")
-    @Description("Sets Dolly Zoom effect. Range: -10 (zoom out) to 10 (zoom in). 0 to disable.")
     @CommandCompletion("<name> <start> <end>")
     public void zoom(Player player, String cinematicName, int startZoom, int endZoom) {
         var cinematics = instance.getGame().getCinematics();
         if (!cinematics.containsKey(cinematicName)) {
-            player.sendMessage(ChatColor.RED + "Cinematic doesn't exist.");
+            msg.send(player, "error.not-exist", "name", cinematicName);
             return;
         }
-
         Cinematic cine = cinematics.get(cinematicName);
         cine.setStartZoom(startZoom);
         cine.setEndZoom(endZoom);
         instance.getStorageManager().save(cinematics);
-
-        player.sendMessage(ChatColor.GREEN + "Set Dolly Zoom for " + cinematicName + ": Start=" + startZoom + " End=" + endZoom);
+        msg.send(player, "edit.zoom-set", "name", cinematicName, "start", String.valueOf(startZoom), "end", String.valueOf(endZoom));
     }
 
     @Subcommand("bgm")
-    @Description("Sets the background music (Vanilla or Resource Pack sound ID).")
     @CommandCompletion("<name> <sound_string|clear>")
     public void bgm(Player player, String cinematicName, String sound) {
         var cinematics = instance.getGame().getCinematics();
         if (!cinematics.containsKey(cinematicName)) {
-            player.sendMessage(ChatColor.RED + "Cinematic doesn't exist.");
+            msg.send(player, "error.not-exist", "name", cinematicName);
             return;
         }
-
         Cinematic cine = cinematics.get(cinematicName);
         if (sound.equalsIgnoreCase("clear")) {
             cine.setBgmSound(null);
-            player.sendMessage(ChatColor.GREEN + "Cleared BGM for " + cinematicName);
+            msg.send(player, "edit.bgm-clear", "name", cinematicName);
         } else {
             cine.setBgmSound(sound);
-            player.sendMessage(ChatColor.GREEN + "Set BGM for " + cinematicName + " to: " + sound);
+            msg.send(player, "edit.bgm-set", "name", cinematicName, "val", sound);
         }
         instance.getStorageManager().save(cinematics);
     }
 
     @Subcommand("title")
-    @Description("Sets a title for a specific frame.")
     @CommandCompletion("<name> <frameIndex> <text...>")
     public void setTitle(CommandSender sender, String cinematic, int frameIndex, String text) {
         var cine = instance.getGame().getCinematics().get(cinematic);
         if (cine != null && frameIndex >= 0 && frameIndex < cine.getFrames().size()) {
             cine.getFrames().get(frameIndex).setTitle(text);
             instance.getStorageManager().save(instance.getGame().getCinematics());
-            sender.sendMessage(ChatColor.GREEN + "Set title for frame " + frameIndex + " to: " + ChatColor.translateAlternateColorCodes('&', text));
-        } else {
-            sender.sendMessage(ChatColor.RED + "Cinematic or frame not found.");
+            msg.send(sender, "edit.title-set", "frame", String.valueOf(frameIndex));
         }
     }
 
     @Subcommand("subtitle")
-    @Description("Sets a subtitle for a specific frame.")
     @CommandCompletion("<name> <frameIndex> <text...>")
     public void setSubtitle(CommandSender sender, String cinematic, int frameIndex, String text) {
         var cine = instance.getGame().getCinematics().get(cinematic);
         if (cine != null && frameIndex >= 0 && frameIndex < cine.getFrames().size()) {
             cine.getFrames().get(frameIndex).setSubtitle(text);
             instance.getStorageManager().save(instance.getGame().getCinematics());
-            sender.sendMessage(ChatColor.GREEN + "Set subtitle for frame " + frameIndex + " to: " + ChatColor.translateAlternateColorCodes('&', text));
-        } else {
-            sender.sendMessage(ChatColor.RED + "Cinematic or frame not found.");
+            msg.send(sender, "edit.subtitle-set", "frame", String.valueOf(frameIndex));
         }
     }
 
@@ -357,24 +354,18 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("play")
-    @Description("Plays an existing cinematic for a player.")
     @CommandCompletion("@players <name>")
     public void play(CommandSender sender, @Flags("other") Player player, String cinematic) {
         var game = instance.getGame();
         var cinematics = game.getCinematics();
-
         if (!cinematics.containsKey(cinematic)) {
-            sender.sendMessage(ChatColor.RED + "Cinematic doesn't exist.");
+            msg.send(sender, "error.not-exist", "name", cinematic);
             return;
         }
 
         var cine = cinematics.get(cinematic);
         var frames = cine.getFrames();
-
-        if (frames.size() < 2) {
-            sender.sendMessage(ChatColor.RED + "Cinematic must have at least 2 frames.");
-            return;
-        }
+        if (frames.size() < 2) return;
 
         var originalLoc = player.getLocation().clone();
         var originalGameMode = player.getGameMode();
@@ -395,15 +386,12 @@ public class CinematicCMD extends BaseCommand {
         game.getViewers().add(player.getUniqueId());
 
         Bukkit.getScheduler().runTaskLater(instance, () -> {
-            if (player.isOnline()) {
-                player.setSpectatorTarget(cam);
-            }
+            if (player.isOnline()) player.setSpectatorTarget(cam);
         }, 1L);
 
         final int steps = instance.getInterpolationSteps();
         final int totalFrames = frames.size();
-        final int totalTicks = (totalFrames - 1) * steps;
-
+        final int totalTicks = cine.getDuration() > 0 ? (cine.getDuration() * 20) : ((totalFrames - 1) * steps);
         int[] lastPassedFrame = {-1};
 
         new BukkitRunnable() {
@@ -417,7 +405,6 @@ public class CinematicCMD extends BaseCommand {
                     return;
                 }
 
-                // PLAY BACKGROUND MUSIC AT START
                 if (currentTick == 0 && cine.getBgmSound() != null && !cine.getBgmSound().isEmpty()) {
                     player.playSound(player.getLocation(), cine.getBgmSound(), SoundCategory.MASTER, 1.0f, 1.0f);
                 }
@@ -429,35 +416,43 @@ public class CinematicCMD extends BaseCommand {
                 double exactSegment = easedProgress * (totalFrames - 1);
                 int segmentIndex = (int) Math.min(exactSegment, totalFrames - 2);
                 double localT = exactSegment - segmentIndex;
-
                 if (isLastTick) {
                     segmentIndex = totalFrames - 2;
                     localT = 1.0;
                 }
 
                 int currentI = segmentIndex + 1;
-
                 while (lastPassedFrame[0] < currentI) {
                     lastPassedFrame[0]++;
                     if (lastPassedFrame[0] < frames.size()) {
                         Frame fCmd = frames.get(lastPassedFrame[0]);
 
-                        // Execute Commands
+                        // Xử lý Command & PlaceholderAPI
                         if (!fCmd.getCommands().isEmpty()) {
                             for (String cmd : fCmd.getCommands()) {
-                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("%player%", player.getName()));
+                                String finalCmd = cmd.replace("%player%", player.getName());
+                                if (instance.isPapiEnabled()) {
+                                    finalCmd = PapiHook.parse(player, finalCmd);
+                                }
+                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
                             }
                         }
 
-                        // Display Subtitles
+                        // Xử lý Title/Subtitle & PlaceholderAPI
                         boolean hasTitle = fCmd.getTitle() != null && !fCmd.getTitle().isEmpty();
                         boolean hasSub = fCmd.getSubtitle() != null && !fCmd.getSubtitle().isEmpty();
-
                         if (hasTitle || hasSub) {
-                            String t = hasTitle ? ChatColor.translateAlternateColorCodes('&', fCmd.getTitle()) : "";
-                            String s = hasSub ? ChatColor.translateAlternateColorCodes('&', fCmd.getSubtitle()) : "";
-                            // Fade in: 10 ticks, Stay: 70 ticks, Fade out: 20 ticks
-                            player.sendTitle(t, s, 10, 70, 20);
+                            String rawTitle = hasTitle ? fCmd.getTitle() : "";
+                            String rawSub = hasSub ? fCmd.getSubtitle() : "";
+
+                            if (instance.isPapiEnabled()) {
+                                rawTitle = PapiHook.parse(player, rawTitle);
+                                rawSub = PapiHook.parse(player, rawSub);
+                            }
+
+                            Component t = hasTitle ? MiniMessage.miniMessage().deserialize(rawTitle) : Component.empty();
+                            Component s = hasSub ? MiniMessage.miniMessage().deserialize(rawSub) : Component.empty();
+                            player.showTitle(Title.title(t, s, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofMillis(1000))));
                         }
                     }
                 }
@@ -476,7 +471,6 @@ public class CinematicCMD extends BaseCommand {
 
                 float interpYaw;
                 float interpPitch;
-
                 if (cine.hasFocus() && cine.getFocusWorld() != null && cine.getFocusWorld().equals(worldForSegment.getName())) {
                     Vector direction = new Vector(cine.getFocusX() - x, cine.getFocusY() - y, cine.getFocusZ() - z);
                     Location lookLoc = new Location(worldForSegment, x, y, z);
@@ -498,12 +492,11 @@ public class CinematicCMD extends BaseCommand {
                 if (cine.getStartZoom() != 0 || cine.getEndZoom() != 0) {
                     double zoomProgress = cine.getStartZoom() + (cine.getEndZoom() - cine.getStartZoom()) * easedProgress;
                     int zoomLevel = (int) Math.round(zoomProgress);
-
-                    if (zoomLevel > 0) {
+                    if (zoomLevel > 0)
                         player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 10, zoomLevel - 1, false, false, false));
-                    } else if (zoomLevel < 0) {
+                    else if (zoomLevel < 0)
                         player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 10, (-zoomLevel) - 1, false, false, false));
-                    } else {
+                    else {
                         player.removePotionEffect(PotionEffectType.SLOWNESS);
                         player.removePotionEffect(PotionEffectType.SPEED);
                     }
@@ -511,10 +504,9 @@ public class CinematicCMD extends BaseCommand {
 
                 if (isLastTick) {
                     cleanup();
-                    if (player.isOnline()) sender.sendMessage(ChatColor.AQUA + "[ExtralyCinematic] " + ChatColor.GREEN + "Cinematic finished.");
+                    if (player.isOnline()) msg.send(sender, "play.finished");
                     this.cancel();
                 }
-
                 currentTick++;
             }
 
@@ -526,8 +518,6 @@ public class CinematicCMD extends BaseCommand {
                     player.teleport(originalLoc);
                     player.removePotionEffect(PotionEffectType.SLOWNESS);
                     player.removePotionEffect(PotionEffectType.SPEED);
-
-                    // Dừng nhạc nền nếu bị ép thoát giữa chừng
                     if (cine.getBgmSound() != null && !cine.getBgmSound().isEmpty()) {
                         player.stopSound(cine.getBgmSound(), SoundCategory.MASTER);
                     }
@@ -538,66 +528,41 @@ public class CinematicCMD extends BaseCommand {
     }
 
     @Subcommand("stop")
-    @Description("Stops a cinematic for a specific player.")
     @CommandCompletion("@players")
     public void stop(CommandSender sender, @Flags("other") Player player) {
-        var game = instance.getGame();
-        if (game.getViewers().contains(player.getUniqueId())) {
-            game.getViewers().remove(player.getUniqueId());
-            sender.sendMessage(ChatColor.GREEN + "Force stopped cinematic for " + player.getName());
+        if (instance.getGame().getViewers().remove(player.getUniqueId())) {
+            msg.send(sender, "play.force-stop", "player", player.getName());
         }
     }
 
     @Subcommand("delete")
-    @Description("Deletes an existing cinematic.")
     @CommandCompletion("<name>")
     public void delete(CommandSender sender, String cinematic) {
-        var game = instance.getGame();
-        if (game.getCinematics().remove(cinematic) != null) {
-            instance.getStorageManager().save(game.getCinematics());
-            sender.sendMessage(ChatColor.GREEN + "Deleted cinematic: " + cinematic);
+        if (instance.getGame().getCinematics().remove(cinematic) != null) {
+            instance.getStorageManager().save(instance.getGame().getCinematics());
+            msg.send(sender, "edit.delete", "name", cinematic);
         }
     }
 
     @Subcommand("addcmd")
-    @Description("Adds a command to a specific frame of a cinematic.")
     @CommandCompletion("<name> <frameIndex> <command>")
     public void addCmd(CommandSender sender, String cinematic, int frameIndex, String command) {
         var cine = instance.getGame().getCinematics().get(cinematic);
         if (cine != null && frameIndex >= 0 && frameIndex < cine.getFrames().size()) {
             cine.getFrames().get(frameIndex).getCommands().add(command);
             instance.getStorageManager().save(instance.getGame().getCinematics());
-            sender.sendMessage(ChatColor.GREEN + "Command added to frame " + frameIndex);
+            msg.send(sender, "edit.cmd-add", "frame", String.valueOf(frameIndex));
         }
     }
 
     @Subcommand("list")
     public void listCinematics(CommandSender sender) {
-        sender.sendMessage(ChatColor.GOLD + "--- ExtralyCinematic List ---");
-        instance.getGame().getCinematics().keySet().forEach(name -> sender.sendMessage(ChatColor.YELLOW + "- " + name));
+        msg.send(sender, "list.header");
+        instance.getGame().getCinematics().keySet().forEach(name -> msg.send(sender, "list.item", "name", name));
     }
 
     @Subcommand("edit")
     public void edit(Player player) {
         player.openInventory(new CinematicGUI(instance).getCinematicListGUI(player));
-    }
-
-    @HelpCommand
-    @Subcommand("help")
-    public void help(CommandSender sender) {
-        sender.sendMessage(ChatColor.GOLD + "--- ExtralyCinematic Commands ---");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic rec <name> <seconds>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic record start <name>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic record stop");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic play <player> <name>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic stop <player>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic path <name>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic focus <name> set|clear");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic shake <name> <intensity>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic zoom <name> <start> <end>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic bgm <name> <sound_string>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic title <name> <frame> <text>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic subtitle <name> <frame> <text>");
-        sender.sendMessage(ChatColor.YELLOW + "/cinematic edit");
     }
 }

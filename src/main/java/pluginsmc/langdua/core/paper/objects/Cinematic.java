@@ -18,8 +18,10 @@ public class Cinematic {
     private int startZoom = 0;
     private int endZoom = 0;
 
-    // Background Music Sound ID
     private String bgmSound = null;
+
+    // Custom Duration for Waypoint System (in seconds)
+    private int duration = 0;
 
     public Cinematic(String name) {
         this.name = name;
@@ -59,4 +61,7 @@ public class Cinematic {
 
     public String getBgmSound() { return bgmSound; }
     public void setBgmSound(String bgmSound) { this.bgmSound = bgmSound; }
+
+    public int getDuration() { return duration; }
+    public void setDuration(int duration) { this.duration = duration; }
 }
