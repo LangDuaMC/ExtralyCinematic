@@ -1,10 +1,11 @@
 package pluginsmc.langdua.core.paper.listeners;
 
-import pluginsmc.langdua.core.paper.Core;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent;
+import pluginsmc.langdua.core.paper.Core;
 
 public class GlobalListener implements Listener {
 
@@ -14,19 +15,19 @@ public class GlobalListener implements Listener {
         this.instance = instance;
     }
 
-    /**
-     * When a player leaves the server we ensure they are removed from the
-     * active cinematic viewers set. This prevents cinematics from continuing
-     * to run for offline players and allows resources to be cleaned up early.
-     *
-     * @param event the quit event
-     */
     @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
+    public void onSneak(PlayerToggleSneakEvent event) {
         Player player = event.getPlayer();
-        var game = instance.getGame();
-        if (game.getViewers().contains(player.getUniqueId())) {
-            game.getViewers().remove(player.getUniqueId());
+
+        // Chặn nút Shift (Ngồi) nếu người chơi đang xem Cinematic
+        if (instance.getGame().getViewers().contains(player.getUniqueId())) {
+            event.setCancelled(true);
         }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        // Tự động xóa người chơi khỏi danh sách người xem nếu họ thoát game đột ngột
+        instance.getGame().getViewers().remove(event.getPlayer().getUniqueId());
     }
 }

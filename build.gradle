@@ -1,11 +1,13 @@
 plugins {
     id 'java'
-    // Đổi sang thư viện Shadow mới hỗ trợ đọc mã Java 21
-    id 'io.github.goooler.shadow' version '8.1.7'
+    id 'io.github.goooler.shadow' version '8.1.8'
 }
 
 group = 'pluginsmc.langdua'
-version = '0.1-SNAPSHOT'
+version = '1.0'
+
+sourceCompatibility = '21'
+targetCompatibility = '21'
 
 repositories {
     mavenCentral()
@@ -14,27 +16,37 @@ repositories {
 }
 
 dependencies {
-    // API 1.21.x
+    // Paper API 1.21
     compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
 
-    // Các thư viện cần thiết
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    // ACF & TaskChain
     implementation 'co.aikar:acf-paper:0.5.1-SNAPSHOT'
     implementation 'co.aikar:taskchain-bukkit:3.7.2'
-
-    // Lombok
-    compileOnly 'org.projectlombok:lombok:1.18.30'
-    annotationProcessor 'org.projectlombok:lombok:1.18.30'
-}
-
-// Bắt buộc dùng Java 21 cho Minecraft 1.21+
-def targetJavaVersion = 21
-java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+// Xử lý plugin.yml cực chuẩn, không bao giờ bị nuốt file
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+shadowJar {
+    relocate 'co.aikar.commands', 'shadded.acf'
+    relocate 'co.aikar.locales', 'shadded.acf.locales'
+    relocate 'acf-minecraft_', 'shadded.acf.properties.acf-minecraft_'
+    relocate 'acf-core_', 'shadded.acf.properties.acf-core_'
+}
+
+build.dependsOn shadowJar

@@ -8,14 +8,18 @@ public class Cinematic {
     private String name;
     private List<Frame> frames = new ArrayList<>();
 
-    // Khóa mục tiêu
     private String focusWorld = null;
     private Double focusX = null;
     private Double focusY = null;
     private Double focusZ = null;
 
-    // Độ rung lắc Camera
     private double shakeIntensity = 0.0;
+
+    private int startZoom = 0;
+    private int endZoom = 0;
+
+    // Background Music Sound ID
+    private String bgmSound = null;
 
     public Cinematic(String name) {
         this.name = name;
@@ -47,4 +51,12 @@ public class Cinematic {
 
     public double getShakeIntensity() { return shakeIntensity; }
     public void setShakeIntensity(double shakeIntensity) { this.shakeIntensity = shakeIntensity; }
+
+    public int getStartZoom() { return startZoom; }
+    public void setStartZoom(int startZoom) { this.startZoom = startZoom; }
+    public int getEndZoom() { return endZoom; }
+    public void setEndZoom(int endZoom) { this.endZoom = endZoom; }
+
+    public String getBgmSound() { return bgmSound; }
+    public void setBgmSound(String bgmSound) { this.bgmSound = bgmSound; }
 }

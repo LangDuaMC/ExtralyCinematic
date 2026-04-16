@@ -11,6 +11,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import pluginsmc.langdua.core.paper.Core;
+import pluginsmc.langdua.core.paper.guis.CinematicDashboardGUI;
 import pluginsmc.langdua.core.paper.guis.CinematicFrameGUI;
 import pluginsmc.langdua.core.paper.guis.CinematicGUI;
 import pluginsmc.langdua.core.paper.guis.CommandEditorGUI;
@@ -31,8 +32,8 @@ public class GuiListener implements Listener {
         Player player = (Player) event.getWhoClicked();
         String title = event.getView().getTitle();
 
-        // 1. Handle Main Cinematic List GUI
-        if (title.equals("Cinematics")) {
+        // 1. Main Menu (Cinematics List)
+        if (title.equals("Cinematics List")) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();
             if (clicked == null || clicked.getType() == Material.AIR) return;
@@ -40,19 +41,53 @@ public class GuiListener implements Listener {
             String cinematicName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
             Cinematic cinematic = instance.getGame().getCinematics().get(cinematicName);
 
+            if (cinematic != null) {
+                player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+            }
+        }
+
+        // 2. Dashboard
+        else if (title.startsWith("Cine: ")) {
+            event.setCancelled(true);
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || clicked.getType() == Material.AIR) return;
+
+            String cinematicName = title.replace("Cine: ", "");
+            Cinematic cinematic = instance.getGame().getCinematics().get(cinematicName);
             if (cinematic == null) return;
 
-            if (event.isLeftClick()) {
+            String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
+
+            if (itemName.equals("Edit Frames & Commands")) {
                 player.openInventory(new CinematicFrameGUI(instance).getCinematicFrameGUI(player, cinematic, 1));
-            } else if (event.isRightClick()) {
-                instance.getGame().getCinematics().remove(cinematicName);
+            } else if (itemName.equals("Visualize Path")) {
+                player.closeInventory();
+                player.performCommand("cinematic path " + cinematic.getName());
+            } else if (itemName.equals("Focus Target")) {
+                if (cinematic.hasFocus()) {
+                    player.performCommand("cinematic focus " + cinematic.getName() + " clear");
+                } else {
+                    player.performCommand("cinematic focus " + cinematic.getName() + " set");
+                }
+                player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+            } else if (itemName.equals("Camera Shake")) {
+                double current = cinematic.getShakeIntensity();
+                if (event.isLeftClick()) cinematic.setShakeIntensity(current + 1);
+                else if (event.isRightClick() && current >= 1) cinematic.setShakeIntensity(current - 1);
                 instance.getStorageManager().save(instance.getGame().getCinematics());
-                player.sendMessage(ChatColor.RED + "Deleted cinematic: " + cinematicName);
+                player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+            } else if (itemName.equals("Play Cinematic")) {
+                player.closeInventory();
+                player.performCommand("cinematic play " + player.getName() + " " + cinematic.getName());
+            } else if (itemName.equals("Delete Cinematic")) {
+                player.closeInventory();
+                player.performCommand("cinematic delete " + cinematic.getName());
+            } else if (itemName.equals("Back")) {
                 player.openInventory(new CinematicGUI(instance).getCinematicListGUI(player));
             }
         }
 
-        // 2. Handle Frames GUI
+        // 3. Frames GUI
         else if (title.startsWith("Frames: ")) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();
@@ -64,16 +99,11 @@ public class GuiListener implements Listener {
 
             String cinematicName = parts[0];
             int page;
-            try {
-                page = Integer.parseInt(parts[1]);
-            } catch (NumberFormatException e) {
-                return;
-            }
+            try { page = Integer.parseInt(parts[1]); } catch (NumberFormatException e) { return; }
 
             Cinematic cinematic = instance.getGame().getCinematics().get(cinematicName);
             if (cinematic == null) return;
 
-            // Nút chuyển trang
             if (clicked.getType() == Material.ARROW) {
                 String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
                 if (itemName.equals("Next Page")) {
@@ -84,36 +114,23 @@ public class GuiListener implements Listener {
                 return;
             }
 
-            // Nút quay lại
             if (clicked.getType() == Material.OAK_DOOR) {
-                String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
-                if (itemName.equals("Back to Cinematics List")) {
-                    player.openInventory(new CinematicGUI(instance).getCinematicListGUI(player));
-                }
+                player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
                 return;
             }
 
-            // Nút vẽ Particle xem trước đường bay
             if (clicked.getType() == Material.ENDER_EYE) {
-                String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
-                if (itemName.equals("Visualize Camera Path")) {
-                    player.closeInventory();
-                    player.performCommand("cinematic path " + cinematic.getName());
-                }
+                player.closeInventory();
+                player.performCommand("cinematic path " + cinematic.getName());
                 return;
             }
 
-            // Thao tác với Frame
             if (clicked.getType() == Material.PAPER) {
                 String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
                 if (!itemName.startsWith("Frame ")) return;
 
                 int frameIndex;
-                try {
-                    frameIndex = Integer.parseInt(itemName.replace("Frame ", ""));
-                } catch (NumberFormatException e) {
-                    return;
-                }
+                try { frameIndex = Integer.parseInt(itemName.replace("Frame ", "")); } catch (NumberFormatException e) { return; }
 
                 if (event.isLeftClick()) {
                     Frame frame = cinematic.getFrames().get(frameIndex);
@@ -122,8 +139,6 @@ public class GuiListener implements Listener {
                         Location loc = new Location(world, frame.getX(), frame.getY(), frame.getZ(), frame.getYaw(), frame.getPitch());
                         player.teleport(loc);
                         player.sendMessage(ChatColor.GREEN + "Teleported to frame " + frameIndex + ".");
-                    } else {
-                        player.sendMessage(ChatColor.RED + "Error: Target world not found.");
                     }
                     player.openInventory(new CommandEditorGUI(instance).getCommandEditorGUI(cinematic, page, frameIndex));
                 } else if (event.isRightClick()) {
@@ -137,7 +152,7 @@ public class GuiListener implements Listener {
             }
         }
 
-        // 3. Handle Command Editor GUI
+        // 4. Command Editor GUI
         else if (title.startsWith("Cmds: ")) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();
@@ -161,10 +176,7 @@ public class GuiListener implements Listener {
             if (cinematic == null) return;
 
             if (clicked.getType() == Material.ARROW) {
-                String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
-                if (itemName.equals("Back to Frames")) {
-                    player.openInventory(new CinematicFrameGUI(instance).getCinematicFrameGUI(player, cinematic, page));
-                }
+                player.openInventory(new CinematicFrameGUI(instance).getCinematicFrameGUI(player, cinematic, page));
                 return;
             }
 
