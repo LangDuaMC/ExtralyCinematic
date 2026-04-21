@@ -1,5 +1,6 @@
 package pluginsmc.langdua.core.paper.listeners;
 
+import com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -18,8 +19,14 @@ public class GlobalListener implements Listener {
     @EventHandler
     public void onSneak(PlayerToggleSneakEvent event) {
         Player player = event.getPlayer();
+        if (instance.getGame().getViewers().contains(player.getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
 
-        // Chặn nút Shift (Ngồi) nếu người chơi đang xem Cinematic
+    @EventHandler
+    public void onStopSpectating(PlayerStopSpectatingEntityEvent event) {
+        Player player = event.getPlayer();
         if (instance.getGame().getViewers().contains(player.getUniqueId())) {
             event.setCancelled(true);
         }
@@ -27,7 +34,7 @@ public class GlobalListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        // Tự động xóa người chơi khỏi danh sách người xem nếu họ thoát game đột ngột
-        instance.getGame().getViewers().remove(event.getPlayer().getUniqueId());
+        Player player = event.getPlayer();
+        instance.getGame().getViewers().remove(player.getUniqueId());
     }
 }

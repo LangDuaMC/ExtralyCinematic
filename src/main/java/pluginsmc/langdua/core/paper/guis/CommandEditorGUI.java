@@ -24,7 +24,7 @@ public class CommandEditorGUI {
         Inventory inv = Bukkit.createInventory(null, 54, "Cmds: " + cinematic.getName() + " - F" + frameIndex + " - P" + page);
         Frame frame = cinematic.getFrames().get(frameIndex);
 
-        // Display existing commands
+        // Hiển thị các lệnh đã add
         for (int i = 0; i < frame.getCommands().size(); i++) {
             if (i >= 45) break;
             ItemStack item = new ItemStack(Material.COMMAND_BLOCK);
@@ -33,27 +33,29 @@ public class CommandEditorGUI {
                 meta.setDisplayName(ChatColor.AQUA + "/" + frame.getCommands().get(i));
                 List<String> lore = new ArrayList<>();
                 lore.add("");
-                lore.add(ChatColor.RED + "Right Click: Delete Command");
+                lore.add(ChatColor.RED + "Chuột phải: Xóa lệnh này");
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
             inv.setItem(i, item);
         }
 
-        // Info panels for adding new features
-        inv.setItem(48, createInfoItem(Material.WRITABLE_BOOK, ChatColor.GREEN + "Add Commands",
-                ChatColor.GRAY + "Type in chat:",
-                ChatColor.YELLOW + "/cinematic addcmd " + cinematic.getName() + " " + frameIndex + " <cmd>"));
+        // Cập nhật lại các nút bấm
+        inv.setItem(48, createInfoItem(Material.WRITABLE_BOOK, ChatColor.GREEN + "Thêm Lệnh (Command)",
+                ChatColor.GRAY + "Click vào đây để nhập lệnh mới."));
 
-        inv.setItem(49, createInfoItem(Material.NAME_TAG, ChatColor.LIGHT_PURPLE + "Add Titles/Subtitles",
-                ChatColor.GRAY + "Type in chat:",
-                ChatColor.YELLOW + "/cinematic title " + cinematic.getName() + " " + frameIndex + " <text>"));
+        inv.setItem(49, createInfoItem(Material.NAME_TAG, ChatColor.LIGHT_PURPLE + "Set Title / Subtitle",
+                ChatColor.GRAY + "Title hiện tại: " + (frame.getTitle() != null ? frame.getTitle() : "Trống"),
+                ChatColor.GRAY + "Subtitle hiện tại: " + (frame.getSubtitle() != null ? frame.getSubtitle() : "Trống"),
+                "",
+                ChatColor.YELLOW + "Chuột Trái: Đặt Title",
+                ChatColor.YELLOW + "Chuột Phải: Đặt Subtitle"));
 
-        inv.setItem(50, createInfoItem(Material.NOTE_BLOCK, ChatColor.GOLD + "Add Sounds",
-                ChatColor.GRAY + "Use playsound command in chat:",
-                ChatColor.YELLOW + "/cinematic addcmd " + cinematic.getName() + " " + frameIndex + " playsound <sound> master %player%"));
+        inv.setItem(50, createInfoItem(Material.NOTE_BLOCK, ChatColor.GOLD + "Thêm Âm Thanh",
+                ChatColor.GRAY + "Click vào đây để nhập tên âm thanh.",
+                ChatColor.GRAY + "VD: entity.ender_dragon.growl"));
 
-        inv.setItem(45, createInfoItem(Material.ARROW, ChatColor.RED + "Back to Frames"));
+        inv.setItem(45, createInfoItem(Material.ARROW, ChatColor.RED + "Quay lại"));
 
         return inv;
     }
