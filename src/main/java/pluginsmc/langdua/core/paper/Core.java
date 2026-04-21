@@ -9,6 +9,9 @@ import pluginsmc.langdua.core.paper.hooks.WorldGuardHook;
 import pluginsmc.langdua.core.paper.listeners.GlobalListener;
 import pluginsmc.langdua.core.paper.listeners.GuiListener;
 import pluginsmc.langdua.core.paper.listeners.PlayerJoinListener;
+import pluginsmc.langdua.core.paper.objects.Cinematic;
+
+import java.util.Map; // Thêm import này
 
 public class Core extends JavaPlugin {
 
@@ -27,16 +30,20 @@ public class Core extends JavaPlugin {
         instance = this;
         saveDefaultConfig();
 
-        // 1. Khởi tạo Data & Storage
-        game = new Game(this);
-        storageManager = new StorageManager(this);
-        // Nạp data an toàn
-        game.getCinematics().putAll(storageManager.load());
-
-        // 2. Khởi tạo Message Manager
+        // 1. Khởi tạo Message Manager trước để dùng cho các thông báo khởi động
         messageManager = new MessageManager(this);
 
-        // 3. Khởi tạo Commands & Auto-complete (Phím Tab)
+        // 2. Khởi tạo Data & Storage
+        game = new Game(this);
+        storageManager = new StorageManager(this);
+
+        // Nạp data an toàn
+        Map<String, Cinematic> loaded = storageManager.load();
+        if (loaded != null) {
+            game.getCinematics().putAll(loaded);
+        }
+
+        // 3. Khởi tạo Commands & Auto-complete (Tab)
         commandManager = new PaperCommandManager(this);
         commandManager.getCommandCompletions().registerCompletion("cinematics", c -> game.getCinematics().keySet());
         commandManager.registerCommand(new CinematicCMD(this));
@@ -46,7 +53,13 @@ public class Core extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new GuiListener(this), this);
         Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this), this);
 
-        // 5. Đăng ký Hooks
+        // 5. Kiểm tra và đăng ký Hooks (Gộp lại cho gọn)
+        setupHooks();
+
+        getLogger().info("ExtralyCinematic enabled successfully!");
+    }
+
+    private void setupHooks() {
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             papiEnabled = true;
         }

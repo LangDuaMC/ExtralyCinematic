@@ -21,6 +21,14 @@ public class StorageManager {
         if (!folder.exists()) folder.mkdirs();
     }
 
+    // Hàm phụ để xử lý mọi loại số (Integer/Double) từ YAML một cách an toàn
+    private double asDouble(Object o) {
+        if (o instanceof Number) {
+            return ((Number) o).doubleValue();
+        }
+        return 0.0;
+    }
+
     public void save(Map<String, Cinematic> cinematics) {
         for (Cinematic cine : cinematics.values()) {
             File file = new File(folder, cine.getName() + ".yml");
@@ -31,7 +39,7 @@ public class StorageManager {
             config.set("shake", cine.getShakeIntensity());
             config.set("zoom.start", cine.getStartZoom());
             config.set("zoom.end", cine.getEndZoom());
-            config.set("duration", cine.getDuration()); // Save duration
+            config.set("duration", cine.getDuration());
 
             if (cine.hasFocus()) {
                 config.set("focus.world", cine.getFocusWorld());
@@ -56,11 +64,7 @@ public class StorageManager {
             }
             config.set("frames", frameList);
 
-            try {
-                config.save(file);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            try { config.save(file); } catch (IOException e) { e.printStackTrace(); }
         }
     }
 
@@ -72,13 +76,14 @@ public class StorageManager {
         for (File file : files) {
             YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
             String name = config.getString("name");
-            Cinematic cine = new Cinematic(name);
+            if (name == null) continue;
 
+            Cinematic cine = new Cinematic(name);
             cine.setBgmSound(config.getString("bgm"));
             cine.setShakeIntensity(config.getDouble("shake"));
             cine.setStartZoom(config.getInt("zoom.start"));
             cine.setEndZoom(config.getInt("zoom.end"));
-            cine.setDuration(config.getInt("duration", 0)); // Load duration
+            cine.setDuration(config.getInt("duration", 0));
 
             if (config.contains("focus")) {
                 cine.setFocus(config.getString("focus.world"), config.getDouble("focus.x"), config.getDouble("focus.y"), config.getDouble("focus.z"));
@@ -87,7 +92,15 @@ public class StorageManager {
             List<Map<?, ?>> frameMaps = config.getMapList("frames");
             List<Frame> frames = new ArrayList<>();
             for (Map<?, ?> m : frameMaps) {
-                Frame f = new Frame((String) m.get("w"), (Double) m.get("x"), (Double) m.get("y"), (Double) m.get("z"), ((Double) m.get("yaw")).floatValue(), ((Double) m.get("pitch")).floatValue());
+                // Sử dụng asDouble để tránh lỗi ép kiểu khi tọa độ là số nguyên
+                Frame f = new Frame(
+                        (String) m.get("w"),
+                        asDouble(m.get("x")),
+                        asDouble(m.get("y")),
+                        asDouble(m.get("z")),
+                        (float) asDouble(m.get("yaw")),
+                        (float) asDouble(m.get("pitch"))
+                );
                 if (m.containsKey("cmds")) f.setCommands((List<String>) m.get("cmds"));
                 if (m.containsKey("title")) f.setTitle((String) m.get("title"));
                 if (m.containsKey("subtitle")) f.setSubtitle((String) m.get("subtitle"));
