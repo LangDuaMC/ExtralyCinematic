@@ -32,7 +32,6 @@ dependencies {
 
     // ACF & TaskChain
     implementation 'co.aikar:acf-paper:0.5.1-SNAPSHOT'
-    implementation 'co.aikar:taskchain-bukkit:3.7.2'
 
     // MiniMessage
     implementation "net.kyori:adventure-api:4.17.0"
