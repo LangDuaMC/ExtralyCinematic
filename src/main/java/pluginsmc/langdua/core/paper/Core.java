@@ -74,6 +74,25 @@ public class Core extends JavaPlugin {
         }
     }
 
+    public void reloadPlugin() {
+        // 1. Reload config.yml
+        reloadConfig();
+
+        // 2. Reload message.yml
+        if (messageManager != null) {
+            messageManager.reload();
+        }
+
+        // 3. Reload cinematics (từ thư mục /cinematics)
+        if (game != null && storageManager != null) {
+            game.getCinematics().clear();
+            Map<String, Cinematic> loaded = storageManager.load();
+            if (loaded != null) {
+                game.getCinematics().putAll(loaded);
+            }
+        }
+    }
+
     @Override
     public void onDisable() {
         // 1. Lưu dữ liệu

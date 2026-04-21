@@ -46,3 +46,5 @@ record:
 list:
   header: "<yellow>Available Cinematics:</yellow>"
   item: "<gray>- <white><name></white></gray>"
+admin:
+  reload: "<green>Plugin configurations and data reloaded successfully!</green>"

@@ -29,6 +29,10 @@ public class MessageManager {
         config = YamlConfiguration.loadConfiguration(file);
     }
 
+    public void reload() {
+        loadConfig();
+    }
+
     private String getRawString(String path, String... placeholders) {
         String msg = config.getString(path, "<red>Missing string: " + path + "</red>");
         for (int i = 0; i < placeholders.length; i += 2) {

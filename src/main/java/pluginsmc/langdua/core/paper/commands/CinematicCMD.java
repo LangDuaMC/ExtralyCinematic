@@ -219,7 +219,7 @@ public class CinematicCMD extends BaseCommand {
                             player.showTitle(Title.title(t, s, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))));
                         }
                     } catch (Exception e) {
-                        instance.getLogger().warning("Loi thuc thi frame " + segmentIndex + ": " + e.getMessage());
+                        instance.getLogger().warning("Error executing features on frame " + segmentIndex + ": " + e.getMessage());
                     }
                 }
 
@@ -344,5 +344,12 @@ public class CinematicCMD extends BaseCommand {
     @Subcommand("edit")
     public void edit(Player player) {
         player.openInventory(new CinematicGUI(instance).getCinematicListGUI(player));
+    }
+
+    @Subcommand("reload")
+    @CommandPermission("cinematic.admin")
+    public void reload(CommandSender sender) {
+        instance.reloadPlugin();
+        msg.send(sender, "admin.reload");
     }
 }
