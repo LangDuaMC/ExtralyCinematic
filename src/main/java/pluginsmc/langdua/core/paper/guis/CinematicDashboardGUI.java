@@ -42,6 +42,10 @@ public class CinematicDashboardGUI {
         inv.setItem(16, createItem(Material.COMPASS, ChatColor.GREEN + "Focus Target",
                 ChatColor.GRAY + "Status: " + (cinematic.hasFocus() ? ChatColor.GREEN + "ON" : ChatColor.RED + "OFF"),
                 ChatColor.GRAY + "Click to toggle (Locks to your current location)."));
+        inv.setItem(17, createItem(Material.REPEATER, ChatColor.AQUA + "Tracks & Timeline",
+                ChatColor.GRAY + "Tracks: " + ChatColor.WHITE + cinematic.getTracks().size(),
+                ChatColor.GRAY + "Clips: " + ChatColor.WHITE + cinematic.getTimeline().size(),
+                ChatColor.GRAY + "Manage deterministic paths and screen transitions."));
         inv.setItem(22, createItem(Material.EMERALD_BLOCK, ChatColor.GREEN + "Play Cinematic", ChatColor.GRAY + "Play this cinematic instantly."));
         inv.setItem(27, createItem(Material.OAK_DOOR, ChatColor.RED + "Back", ChatColor.GRAY + "Return to the main list."));
         inv.setItem(35, createItem(Material.BARRIER, ChatColor.DARK_RED + "Delete Cinematic", ChatColor.GRAY + "Click to delete (Cannot be undone)."));
