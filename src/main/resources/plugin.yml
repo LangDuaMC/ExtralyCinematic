@@ -1,5 +1,5 @@
 name: ExtralyCinematic
-version: 0.1-SNAPSHOT
+version: 2.5
 main: pluginsmc.langdua.core.paper.Core
 api-version: '1.21'
 softdepend: [PlaceholderAPI, WorldGuard, MythicMobs]

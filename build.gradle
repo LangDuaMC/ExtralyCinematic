@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'pluginsmc.langdua'
-version = '1.0'
+version = '2.5'
 
 sourceCompatibility = '21'
 targetCompatibility = '21'
