@@ -108,8 +108,6 @@ public class Core extends JavaPlugin {
                 }
             }
         }
-
-        // 3. Nhả người chơi đang kẹt xem phim
         if (game != null) {
             for (java.util.UUID uuid : game.getViewers()) {
                 org.bukkit.entity.Player p = Bukkit.getPlayer(uuid);

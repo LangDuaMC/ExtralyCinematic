@@ -23,8 +23,6 @@ public class CommandEditorGUI {
     public Inventory getCommandEditorGUI(Cinematic cinematic, int page, int frameIndex) {
         Inventory inv = Bukkit.createInventory(null, 54, "Cmds: " + cinematic.getName() + " - F" + frameIndex + " - P" + page);
         Frame frame = cinematic.getFrames().get(frameIndex);
-
-        // Hiển thị các lệnh đã add
         for (int i = 0; i < frame.getCommands().size(); i++) {
             if (i >= 45) break;
             ItemStack item = new ItemStack(Material.COMMAND_BLOCK);
@@ -39,8 +37,6 @@ public class CommandEditorGUI {
             }
             inv.setItem(i, item);
         }
-
-        // Cập nhật lại các nút bấm
         inv.setItem(48, createInfoItem(Material.WRITABLE_BOOK, ChatColor.GREEN + "Thêm Lệnh (Command)",
                 ChatColor.GRAY + "Click vào đây để nhập lệnh mới."));
 

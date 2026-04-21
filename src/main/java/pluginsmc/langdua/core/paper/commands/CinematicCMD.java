@@ -39,8 +39,6 @@ public class CinematicCMD extends BaseCommand {
         this.instance = instance;
         this.msg = instance.getMessageManager();
     }
-
-    // --- TOÁN HỌC ---
     private double catmullRom(double p0, double p1, double p2, double p3, double t) {
         return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
     }
@@ -55,8 +53,6 @@ public class CinematicCMD extends BaseCommand {
     private double easeInOutSine(double x) {
         return -(Math.cos(Math.PI * x) - 1) / 2;
     }
-
-    // --- GHI HÌNH ---
     @Subcommand("rec")
     @CommandCompletion("<name> <seconds>")
     public void rec(Player sender, String cinematic, int seconds) {
@@ -147,8 +143,6 @@ public class CinematicCMD extends BaseCommand {
             msg.send(player, "record.stop-free", "name", cine.getName(), "count", String.valueOf(cine.getFrames().size()));
         }
     }
-
-    // --- PHÁT PHIM ---
     @Subcommand("play")
     @CommandCompletion("@players @cinematics")
     public void play(CommandSender sender, @Flags("other") Player player, String cinematicName) {
@@ -271,8 +265,6 @@ public class CinematicCMD extends BaseCommand {
             msg.send(sender, "play.force-stop", "player", player.getName());
         }
     }
-
-    // --- CHỈNH SỬA & TIỆN ÍCH ---
     @Subcommand("path")
     @CommandCompletion("@cinematics")
     public void path(Player player, String cinematicName) {

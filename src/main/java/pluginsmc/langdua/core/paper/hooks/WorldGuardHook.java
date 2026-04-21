@@ -40,8 +40,6 @@ public class WorldGuardHook implements Listener {
         if (!file.exists()) {
             try { file.createNewFile(); } catch (IOException ignored) {}
             config = YamlConfiguration.loadConfiguration(file);
-
-            // Generate example setup
             config.set("regions.boss_arena", "BossIntro");
             config.set("regions.spawn_city", "WelcomeCine");
 
@@ -54,16 +52,12 @@ public class WorldGuardHook implements Listener {
     public void onPlayerMove(PlayerMoveEvent event) {
         Location from = event.getFrom();
         Location to = event.getTo();
-
-        // Tối ưu hóa: Chỉ tính là di chuyển khi thực sự bước qua block khác
         if (to == null || (from.getBlockX() == to.getBlockX() && from.getBlockY() == to.getBlockY() && from.getBlockZ() == to.getBlockZ())) {
             return;
         }
 
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-
-        // Bỏ qua nếu player đang xem Cinematic rồi (chống kẹt vòng lặp)
         if (instance.getGame().getViewers().contains(uuid)) return;
 
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
@@ -78,17 +72,13 @@ public class WorldGuardHook implements Listener {
         Set<String> oldRegions = playerRegions.getOrDefault(uuid, new HashSet<>());
 
         for (String region : currentRegions) {
-            // Nhận diện người chơi VỪA MỚI bước vào Region
             if (!oldRegions.contains(region)) {
                 String cinematicName = config.getString("regions." + region);
                 if (cinematicName != null && instance.getGame().getCinematics().containsKey(cinematicName)) {
-                    // Ép xem phim luôn!
                     player.performCommand("cinematic play " + player.getName() + " " + cinematicName);
                 }
             }
         }
-
-        // Cập nhật lại danh sách Region hiện tại của người chơi
         playerRegions.put(uuid, currentRegions);
     }
 

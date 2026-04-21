@@ -49,8 +49,6 @@ public class CinematicFrameGUI {
             }
             inv.setItem(i - startIndex, item);
         }
-
-        // Pagination & Controls
         if (page > 1) {
             inv.setItem(45, createControlItem(Material.ARROW, ChatColor.YELLOW + "Previous Page"));
         }

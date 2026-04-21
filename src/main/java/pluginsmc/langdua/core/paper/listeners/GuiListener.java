@@ -45,8 +45,6 @@ public class GuiListener implements Listener {
                 player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
             }
         }
-
-        // 2. Dashboard
         else if (title.startsWith("Cine: ")) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();
@@ -143,8 +141,6 @@ public class GuiListener implements Listener {
                 player.openInventory(new CinematicGUI(instance).getCinematicListGUI(player));
             }
         }
-
-        // 3. Frames GUI
         else if (title.startsWith("Frames: ")) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();
@@ -208,8 +204,6 @@ public class GuiListener implements Listener {
                 }
             }
         }
-
-        // 4. Command Editor GUI
         else if (title.startsWith("Cmds: ")) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();

@@ -19,10 +19,7 @@ public class CinematicDashboardGUI {
     }
 
     public Inventory getDashboardGUI(Cinematic cinematic) {
-        // Tăng lên 36 slots để bố cục rộng rãi, sang trọng hơn
         Inventory inv = Bukkit.createInventory(null, 36, "Cine: " + cinematic.getName());
-
-        // --- HÀNG TÍNH NĂNG CHÍNH ---
         inv.setItem(10, createItem(Material.ITEM_FRAME, ChatColor.AQUA + "Edit Frames & Commands", ChatColor.GRAY + "Edit frame coordinates and commands."));
         inv.setItem(11, createItem(Material.ENDER_EYE, ChatColor.LIGHT_PURPLE + "Visualize Path", ChatColor.GRAY + "Preview the flight path with particles."));
 
@@ -45,13 +42,9 @@ public class CinematicDashboardGUI {
         inv.setItem(16, createItem(Material.COMPASS, ChatColor.GREEN + "Focus Target",
                 ChatColor.GRAY + "Status: " + (cinematic.hasFocus() ? ChatColor.GREEN + "ON" : ChatColor.RED + "OFF"),
                 ChatColor.GRAY + "Click to toggle (Locks to your current location)."));
-
-        // --- HÀNG ACTION ---
         inv.setItem(22, createItem(Material.EMERALD_BLOCK, ChatColor.GREEN + "Play Cinematic", ChatColor.GRAY + "Play this cinematic instantly."));
         inv.setItem(27, createItem(Material.OAK_DOOR, ChatColor.RED + "Back", ChatColor.GRAY + "Return to the main list."));
         inv.setItem(35, createItem(Material.BARRIER, ChatColor.DARK_RED + "Delete Cinematic", ChatColor.GRAY + "Click to delete (Cannot be undone)."));
-
-        // Fill background với kính đen để tối ưu hóa click (Chống click vào ô trống gây lỗi)
         ItemStack glass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
         for (int i = 0; i < inv.getSize(); i++) {
             if (inv.getItem(i) == null) {

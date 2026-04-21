@@ -17,8 +17,6 @@ public class StorageManager {
         this.folder = new File(instance.getDataFolder(), "cinematics");
         if (!folder.exists()) folder.mkdirs();
     }
-
-    // Xử lý an toàn lỗi ép kiểu số
     private double asDouble(Object o) {
         return (o instanceof Number) ? ((Number) o).doubleValue() : 0.0;
     }

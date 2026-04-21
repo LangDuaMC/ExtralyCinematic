@@ -34,7 +34,6 @@ class CinematicMechanic implements ITargetedEntitySkill {
 
     public CinematicMechanic(MythicLineConfig config, Core instance) {
         this.instance = instance;
-        // Lấy tên cinematic từ thuộc tính 'cine' hoặc 'c'
         this.cinematicName = config.getString(new String[]{"cinematic", "cine", "c"}, "");
     }
 
@@ -42,8 +41,6 @@ class CinematicMechanic implements ITargetedEntitySkill {
     public SkillResult castAtEntity(SkillMetadata data, AbstractEntity target) {
         if (target.isPlayer() && !cinematicName.isEmpty()) {
             Player player = (Player) target.getBukkitEntity();
-
-            // Đẩy vào Main Thread của Bukkit để chạy lệnh an toàn
             Bukkit.getScheduler().runTask(instance, () -> {
                 player.performCommand("cinematic play " + player.getName() + " " + cinematicName);
             });
