@@ -20,6 +20,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import pluginsmc.langdua.core.paper.Core;
 import pluginsmc.langdua.core.paper.MessageManager;
 import pluginsmc.langdua.core.paper.guis.CinematicGUI;
+import pluginsmc.langdua.core.paper.hooks.PapiHook;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
 import pluginsmc.langdua.core.paper.objects.Frame;
 
@@ -193,7 +194,7 @@ public class CinematicCMD extends BaseCommand {
 
                 @Override
                 public void run() {
-                    if (!player.isOnline() || !instance.getGame().getViewers().contains(player.getUniqueId()) || currentTick >= totalTicks) {
+                    if (!player.isOnline() || !instance.getGame().getViewers().contains(player.getUniqueId()) || currentTick > totalTicks) {
                         cleanup();
                         this.cancel();
                         return;
@@ -207,39 +208,62 @@ public class CinematicCMD extends BaseCommand {
                         player.playSound(player.getLocation(), cine.getBgmSound(), SoundCategory.MASTER, 1f, 1f);
                     }
 
-                    double progress = (double) currentTick / totalTicks;
+                    boolean isLastTick = (currentTick >= totalTicks);
+                    double progress = totalTicks == 0 ? 1.0 : (double) currentTick / totalTicks;
                     double eased = easeInOutSine(progress);
                     double exactSegment = eased * (frames.size() - 1);
                     int segmentIndex = (int) Math.min(exactSegment, frames.size() - 2);
                     double localT = exactSegment - segmentIndex;
 
-                    if (segmentIndex > lastFrameIdx) {
-                        lastFrameIdx = segmentIndex;
-                        Frame f = frames.get(segmentIndex);
+                    if (isLastTick) {
+                        segmentIndex = frames.size() - 2;
+                        localT = 1.0;
+                    }
 
-                        try {
-                            if (f.getCommands() != null && !f.getCommands().isEmpty()) {
-                                f.getCommands().forEach(c -> {
-                                    if (c == null || c.trim().isEmpty()) return;
-                                    String cmd = c.replace("%player%", player.getName());
-                                    if (cmd.startsWith("/")) cmd = cmd.substring(1);
-                                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-                                });
+                    // QUAN TRỌNG: Quét qua TẤT CẢ các frame đã bay qua, không bỏ sót frame nào kể cả frame cuối.
+                    int currentI = isLastTick ? frames.size() - 1 : segmentIndex;
+
+                    while (lastFrameIdx < currentI) {
+                        lastFrameIdx++;
+                        if (lastFrameIdx < frames.size()) {
+                            Frame f = frames.get(lastFrameIdx);
+                            try {
+                                // 1. Xử lý Commands
+                                if (f.getCommands() != null && !f.getCommands().isEmpty()) {
+                                    f.getCommands().forEach(c -> {
+                                        if (c == null || c.trim().isEmpty()) return;
+                                        String cmd = c.replace("%player%", player.getName());
+                                        if (instance.isPapiEnabled()) cmd = PapiHook.parse(player, cmd);
+                                        if (cmd.startsWith("/")) cmd = cmd.substring(1);
+                                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                                    });
+                                }
+
+                                // 2. Xử lý Titles
+                                String tStr = f.getTitle();
+                                String sStr = f.getSubtitle();
+                                boolean hasTitle = tStr != null && !tStr.trim().isEmpty();
+                                boolean hasSubtitle = sStr != null && !sStr.trim().isEmpty();
+
+                                if (hasTitle || hasSubtitle) {
+                                    if (instance.isPapiEnabled()) {
+                                        tStr = hasTitle ? PapiHook.parse(player, tStr) : "";
+                                        sStr = hasSubtitle ? PapiHook.parse(player, sStr) : "";
+                                    }
+                                    Component t = hasTitle ? MiniMessage.miniMessage().deserialize(tStr) : Component.empty();
+                                    Component s = hasSubtitle ? MiniMessage.miniMessage().deserialize(sStr) : Component.empty();
+                                    player.showTitle(Title.title(t, s, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))));
+                                }
+                            } catch (Throwable e) {
+                                instance.getLogger().warning("Loi thuc thi tinh nang o frame " + lastFrameIdx + ": " + e.getMessage());
                             }
-
-                            String tStr = f.getTitle();
-                            String sStr = f.getSubtitle();
-                            boolean hasTitle = tStr != null && !tStr.trim().isEmpty();
-                            boolean hasSubtitle = sStr != null && !sStr.trim().isEmpty();
-
-                            if (hasTitle || hasSubtitle) {
-                                Component t = hasTitle ? MiniMessage.miniMessage().deserialize(tStr) : Component.empty();
-                                Component s = hasSubtitle ? MiniMessage.miniMessage().deserialize(sStr) : Component.empty();
-                                player.showTitle(Title.title(t, s, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))));
-                            }
-                        } catch (Throwable e) {
-                            instance.getLogger().warning("Safely skipped error on frame " + segmentIndex + ": " + e.getMessage());
                         }
+                    }
+
+                    if (isLastTick) {
+                        cleanup();
+                        this.cancel();
+                        return;
                     }
 
                     Frame fr0 = segmentIndex > 0 ? frames.get(segmentIndex - 1) : frames.get(segmentIndex);
