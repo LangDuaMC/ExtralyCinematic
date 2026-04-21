@@ -6,10 +6,7 @@ import pluginsmc.langdua.core.paper.objects.Frame;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class StorageManager {
     private final Core instance;
@@ -21,32 +18,21 @@ public class StorageManager {
         if (!folder.exists()) folder.mkdirs();
     }
 
-    // Hàm phụ để xử lý mọi loại số (Integer/Double) từ YAML một cách an toàn
+    // Xử lý an toàn lỗi ép kiểu số
     private double asDouble(Object o) {
-        if (o instanceof Number) {
-            return ((Number) o).doubleValue();
-        }
-        return 0.0;
+        return (o instanceof Number) ? ((Number) o).doubleValue() : 0.0;
     }
 
     public void save(Map<String, Cinematic> cinematics) {
         for (Cinematic cine : cinematics.values()) {
             File file = new File(folder, cine.getName() + ".yml");
             YamlConfiguration config = new YamlConfiguration();
-
             config.set("name", cine.getName());
             config.set("bgm", cine.getBgmSound());
             config.set("shake", cine.getShakeIntensity());
             config.set("zoom.start", cine.getStartZoom());
             config.set("zoom.end", cine.getEndZoom());
             config.set("duration", cine.getDuration());
-
-            if (cine.hasFocus()) {
-                config.set("focus.world", cine.getFocusWorld());
-                config.set("focus.x", cine.getFocusX());
-                config.set("focus.y", cine.getFocusY());
-                config.set("focus.z", cine.getFocusZ());
-            }
 
             List<Map<String, Object>> frameList = new ArrayList<>();
             for (Frame f : cine.getFrames()) {
@@ -63,7 +49,6 @@ public class StorageManager {
                 frameList.add(fMap);
             }
             config.set("frames", frameList);
-
             try { config.save(file); } catch (IOException e) { e.printStackTrace(); }
         }
     }
@@ -74,40 +59,32 @@ public class StorageManager {
         if (files == null) return cinematics;
 
         for (File file : files) {
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-            String name = config.getString("name");
-            if (name == null) continue;
+            try {
+                // BỌC TRY-CATCH CHỐNG SẬP
+                YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+                String name = config.getString("name");
+                if (name == null) continue;
 
-            Cinematic cine = new Cinematic(name);
-            cine.setBgmSound(config.getString("bgm"));
-            cine.setShakeIntensity(config.getDouble("shake"));
-            cine.setStartZoom(config.getInt("zoom.start"));
-            cine.setEndZoom(config.getInt("zoom.end"));
-            cine.setDuration(config.getInt("duration", 0));
+                Cinematic cine = new Cinematic(name);
+                cine.setBgmSound(config.getString("bgm"));
+                cine.setShakeIntensity(config.getDouble("shake"));
+                cine.setStartZoom(config.getInt("zoom.start", 0));
+                cine.setEndZoom(config.getInt("zoom.end", 0));
+                cine.setDuration(config.getInt("duration", 0));
 
-            if (config.contains("focus")) {
-                cine.setFocus(config.getString("focus.world"), config.getDouble("focus.x"), config.getDouble("focus.y"), config.getDouble("focus.z"));
+                List<Map<?, ?>> frameMaps = config.getMapList("frames");
+                for (Map<?, ?> m : frameMaps) {
+                    Frame f = new Frame((String) m.get("w"), asDouble(m.get("x")), asDouble(m.get("y")), asDouble(m.get("z")), (float) asDouble(m.get("yaw")), (float) asDouble(m.get("pitch")));
+                    if (m.containsKey("cmds")) f.setCommands((List<String>) m.get("cmds"));
+                    if (m.containsKey("title")) f.setTitle((String) m.get("title"));
+                    if (m.containsKey("subtitle")) f.setSubtitle((String) m.get("subtitle"));
+                    cine.getFrames().add(f);
+                }
+                cinematics.put(name, cine);
+            } catch (Exception e) {
+                instance.getLogger().severe("Lỗi định dạng khi đọc file: " + file.getName() + ". Đã bỏ qua để chống sập plugin!");
+                e.printStackTrace();
             }
-
-            List<Map<?, ?>> frameMaps = config.getMapList("frames");
-            List<Frame> frames = new ArrayList<>();
-            for (Map<?, ?> m : frameMaps) {
-                // Sử dụng asDouble để tránh lỗi ép kiểu khi tọa độ là số nguyên
-                Frame f = new Frame(
-                        (String) m.get("w"),
-                        asDouble(m.get("x")),
-                        asDouble(m.get("y")),
-                        asDouble(m.get("z")),
-                        (float) asDouble(m.get("yaw")),
-                        (float) asDouble(m.get("pitch"))
-                );
-                if (m.containsKey("cmds")) f.setCommands((List<String>) m.get("cmds"));
-                if (m.containsKey("title")) f.setTitle((String) m.get("title"));
-                if (m.containsKey("subtitle")) f.setSubtitle((String) m.get("subtitle"));
-                frames.add(f);
-            }
-            cine.setFrames(frames);
-            cinematics.put(name, cine);
         }
         return cinematics;
     }

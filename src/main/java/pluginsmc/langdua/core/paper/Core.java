@@ -11,7 +11,7 @@ import pluginsmc.langdua.core.paper.listeners.GuiListener;
 import pluginsmc.langdua.core.paper.listeners.PlayerJoinListener;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
 
-import java.util.Map; // Thêm import này
+import java.util.Map;
 
 public class Core extends JavaPlugin {
 
@@ -30,30 +30,28 @@ public class Core extends JavaPlugin {
         instance = this;
         saveDefaultConfig();
 
-        // 1. Khởi tạo Message Manager trước để dùng cho các thông báo khởi động
-        messageManager = new MessageManager(this);
+        // 1. Khởi tạo
+        this.messageManager = new MessageManager(this);
+        this.game = new Game(this);
+        this.storageManager = new StorageManager(this);
 
-        // 2. Khởi tạo Data & Storage
-        game = new Game(this);
-        storageManager = new StorageManager(this);
-
-        // Nạp data an toàn
+        // 2. Nạp Data bọc lỗi
         Map<String, Cinematic> loaded = storageManager.load();
         if (loaded != null) {
             game.getCinematics().putAll(loaded);
         }
 
-        // 3. Khởi tạo Commands & Auto-complete (Tab)
+        // 3. Đăng ký Lệnh & Tab-complete
         commandManager = new PaperCommandManager(this);
         commandManager.getCommandCompletions().registerCompletion("cinematics", c -> game.getCinematics().keySet());
         commandManager.registerCommand(new CinematicCMD(this));
 
-        // 4. Đăng ký Listeners
+        // 4. Đăng ký Sự kiện
         Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
         Bukkit.getPluginManager().registerEvents(new GuiListener(this), this);
         Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this), this);
 
-        // 5. Kiểm tra và đăng ký Hooks (Gộp lại cho gọn)
+        // 5. Setup Hooks
         setupHooks();
 
         getLogger().info("ExtralyCinematic enabled successfully!");
@@ -75,8 +73,29 @@ public class Core extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // 1. Lưu dữ liệu
         if (storageManager != null && game != null) {
             storageManager.save(game.getCinematics());
+        }
+
+        // 2. Dọn rác Ghost Entity (Camera)
+        for (org.bukkit.World world : Bukkit.getWorlds()) {
+            for (org.bukkit.entity.Entity entity : world.getEntitiesByClass(org.bukkit.entity.ArmorStand.class)) {
+                if (entity.getScoreboardTags().contains("extraly_cam")) {
+                    entity.remove();
+                }
+            }
+        }
+
+        // 3. Nhả người chơi đang kẹt xem phim
+        if (game != null) {
+            for (java.util.UUID uuid : game.getViewers()) {
+                org.bukkit.entity.Player p = Bukkit.getPlayer(uuid);
+                if (p != null && p.isOnline()) {
+                    p.setSpectatorTarget(null);
+                    p.setGameMode(org.bukkit.GameMode.SURVIVAL);
+                }
+            }
         }
     }
 
