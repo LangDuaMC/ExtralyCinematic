@@ -2,6 +2,8 @@ package pluginsmc.langdua.core.paper;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import pluginsmc.langdua.core.paper.managers.PlayManager;
+import pluginsmc.langdua.core.paper.managers.RecordManager;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
 
 import java.util.HashMap;
@@ -16,10 +18,14 @@ public class Game {
 
     private HashMap<String, Cinematic> cinematics;
     private Set<UUID> viewers;
+    private final PlayManager playManager;
+    private final RecordManager recordManager;
 
     public Game(Core instance) {
         this.instance = instance;
         cinematics = new HashMap<>();
         viewers = new HashSet<>();
+        playManager = new PlayManager(instance);
+        recordManager = new RecordManager(instance);
     }
 }

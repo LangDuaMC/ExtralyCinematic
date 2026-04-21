@@ -1,8 +1,9 @@
 package pluginsmc.langdua.core.paper;
 
-import co.aikar.commands.PaperCommandManager;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import pluginsmc.langdua.core.paper.commands.CinematicCMD;
 import pluginsmc.langdua.core.paper.hooks.MythicMobsHook;
 import pluginsmc.langdua.core.paper.hooks.WorldGuardHook;
@@ -16,7 +17,6 @@ import java.util.Map;
 public class Core extends JavaPlugin {
 
     private static Core instance;
-    private PaperCommandManager commandManager;
     private Game game;
     private StorageManager storageManager;
     private MessageManager messageManager;
@@ -27,9 +27,15 @@ public class Core extends JavaPlugin {
     private boolean mmEnabled = false;
 
     @Override
-    public void onEnable() {
+    public void onLoad() {
         instance = this;
+        CommandAPI.onLoad(new CommandAPIPaperConfig(this).silentLogs(true));
+    }
+
+    @Override
+    public void onEnable() {
         saveDefaultConfig();
+        CommandAPI.onEnable();
 
         // 1. Khởi tạo
         this.messageManager = new MessageManager(this);
@@ -44,9 +50,7 @@ public class Core extends JavaPlugin {
         }
 
         // 3. Đăng ký Lệnh & Tab-complete
-        commandManager = new PaperCommandManager(this);
-        commandManager.getCommandCompletions().registerCompletion("cinematics", c -> game.getCinematics().keySet());
-        commandManager.registerCommand(new CinematicCMD(this));
+        new CinematicCMD(this).register();
 
         // 4. Đăng ký Sự kiện
         Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
@@ -95,6 +99,10 @@ public class Core extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (game != null) {
+            game.getPlayManager().shutdown();
+        }
+
         // 1. Lưu dữ liệu
         if (storageManager != null && game != null) {
             storageManager.save(game.getCinematics());
@@ -117,6 +125,7 @@ public class Core extends JavaPlugin {
                 }
             }
         }
+        CommandAPI.onDisable();
     }
 
     public static Core getInstance() { return instance; }

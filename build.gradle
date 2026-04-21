@@ -30,8 +30,8 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
 
-    // ACF & TaskChain
-    implementation 'co.aikar:acf-paper:0.5.1-SNAPSHOT'
+    // CommandAPI
+    implementation 'dev.jorel:commandapi-paper-shade:11.1.0'
 
     // MiniMessage
     implementation "net.kyori:adventure-api:4.17.0"
@@ -59,10 +59,6 @@ processResources {
 }
 
 shadowJar {
-    relocate 'co.aikar.commands', 'shadded.acf'
-    relocate 'co.aikar.locales', 'shadded.acf.locales'
-    relocate 'acf-minecraft_', 'shadded.acf.properties.acf-minecraft_'
-    relocate 'acf-core_', 'shadded.acf.properties.acf-core_'
 }
 
 build.dependsOn shadowJar
