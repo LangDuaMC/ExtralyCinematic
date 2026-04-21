@@ -39,6 +39,7 @@ public class CinematicCMD extends BaseCommand {
         this.instance = instance;
         this.msg = instance.getMessageManager();
     }
+
     private double catmullRom(double p0, double p1, double p2, double p3, double t) {
         return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
     }
@@ -53,6 +54,7 @@ public class CinematicCMD extends BaseCommand {
     private double easeInOutSine(double x) {
         return -(Math.cos(Math.PI * x) - 1) / 2;
     }
+
     @Subcommand("rec")
     @CommandCompletion("<name> <seconds>")
     public void rec(Player sender, String cinematic, int seconds) {
@@ -143,6 +145,7 @@ public class CinematicCMD extends BaseCommand {
             msg.send(player, "record.stop-free", "name", cine.getName(), "count", String.valueOf(cine.getFrames().size()));
         }
     }
+
     @Subcommand("play")
     @CommandCompletion("@players @cinematics")
     public void play(CommandSender sender, @Flags("other") Player player, String cinematicName) {
@@ -158,104 +161,131 @@ public class CinematicCMD extends BaseCommand {
         Frame f1 = frames.get(0);
         Location start = new Location(Bukkit.getWorld(f1.getWorld()), f1.getX(), f1.getY(), f1.getZ(), f1.getYaw(), f1.getPitch());
 
-        ArmorStand cam = (ArmorStand) start.getWorld().spawnEntity(start, EntityType.ARMOR_STAND);
-        cam.setVisible(false); cam.setGravity(false); cam.setInvulnerable(true);
-        cam.addScoreboardTag("extraly_cam");
+        if (!start.getChunk().isLoaded()) {
+            start.getChunk().load(true);
+        }
 
         player.setGameMode(GameMode.SPECTATOR);
+        player.teleport(start);
+
+        ArmorStand cam = (ArmorStand) start.getWorld().spawnEntity(start, EntityType.ARMOR_STAND);
+        cam.setVisible(false);
+        cam.setGravity(false);
+        cam.setInvulnerable(true);
+        cam.addScoreboardTag("extraly_cam");
+
         instance.getGame().getViewers().add(player.getUniqueId());
-        Bukkit.getScheduler().runTaskLater(instance, () -> player.setSpectatorTarget(cam), 1L);
 
-        final int totalTicks = cine.getDuration() > 0 ? cine.getDuration() * 20 : (frames.size() - 1) * instance.getInterpolationSteps();
-
-        new BukkitRunnable() {
-            int currentTick = 0;
-            int lastFrameIdx = -1;
-
-            @Override
-            public void run() {
-                if (!player.isOnline() || !instance.getGame().getViewers().contains(player.getUniqueId()) || currentTick >= totalTicks) {
-                    cleanup(); this.cancel(); return;
-                }
-
-                if (currentTick == 0 && cine.getBgmSound() != null) {
-                    player.playSound(player.getLocation(), cine.getBgmSound(), SoundCategory.MASTER, 1f, 1f);
-                }
-
-                double progress = (double) currentTick / totalTicks;
-                double eased = easeInOutSine(progress);
-                double exactSegment = eased * (frames.size() - 1);
-                int segmentIndex = (int) Math.min(exactSegment, frames.size() - 2);
-                double localT = exactSegment - segmentIndex;
-
-                if (segmentIndex > lastFrameIdx) {
-                    lastFrameIdx = segmentIndex;
-                    Frame f = frames.get(segmentIndex);
-
-                    try {
-                        if (f.getCommands() != null && !f.getCommands().isEmpty()) {
-                            f.getCommands().forEach(c -> {
-                                if (c == null || c.trim().isEmpty()) return;
-                                String cmd = c.replace("%player%", player.getName());
-                                if (cmd.startsWith("/")) cmd = cmd.substring(1);
-                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-                            });
-                        }
-
-                        String tStr = f.getTitle();
-                        String sStr = f.getSubtitle();
-                        boolean hasTitle = tStr != null && !tStr.trim().isEmpty();
-                        boolean hasSubtitle = sStr != null && !sStr.trim().isEmpty();
-
-                        if (hasTitle || hasSubtitle) {
-                            Component t = hasTitle ? MiniMessage.miniMessage().deserialize(tStr) : Component.empty();
-                            Component s = hasSubtitle ? MiniMessage.miniMessage().deserialize(sStr) : Component.empty();
-                            player.showTitle(Title.title(t, s, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))));
-                        }
-                    } catch (Exception e) {
-                        instance.getLogger().warning("Error executing features on frame " + segmentIndex + ": " + e.getMessage());
-                    }
-                }
-
-                Frame fr0 = segmentIndex > 0 ? frames.get(segmentIndex - 1) : frames.get(segmentIndex);
-                Frame fr1 = frames.get(segmentIndex);
-                Frame fr2 = frames.get(segmentIndex + 1);
-                Frame fr3 = segmentIndex < frames.size() - 2 ? frames.get(segmentIndex + 2) : fr2;
-
-                double x = catmullRom(fr0.getX(), fr1.getX(), fr2.getX(), fr3.getX(), localT);
-                double y = catmullRom(fr0.getY(), fr1.getY(), fr2.getY(), fr3.getY(), localT);
-                double z = catmullRom(fr0.getZ(), fr1.getZ(), fr2.getZ(), fr3.getZ(), localT);
-
-                float yaw = (float) catmullRom(smoothAngle(fr1.getYaw(), fr0.getYaw()), fr1.getYaw(), smoothAngle(fr1.getYaw(), fr2.getYaw()), smoothAngle(smoothAngle(fr1.getYaw(), fr2.getYaw()), fr3.getYaw()), localT);
-                float pitch = (float) catmullRom(smoothAngle(fr1.getPitch(), fr0.getPitch()), fr1.getPitch(), smoothAngle(fr1.getPitch(), fr2.getPitch()), smoothAngle(smoothAngle(fr1.getPitch(), fr2.getPitch()), fr3.getPitch()), localT);
-
-                if (cine.getShakeIntensity() > 0) {
-                    yaw += (Math.random() - 0.5) * cine.getShakeIntensity();
-                    pitch += (Math.random() - 0.5) * cine.getShakeIntensity();
-                }
-
-                cam.teleport(new Location(cam.getWorld(), x, y, z, yaw, pitch));
-
-                if (cine.getStartZoom() != 0 || cine.getEndZoom() != 0) {
-                    int zoom = (int) (cine.getStartZoom() + (cine.getEndZoom() - cine.getStartZoom()) * eased);
-                    if (zoom > 0) player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 2, zoom - 1, false, false));
-                }
-
-                currentTick++;
-            }
-
-            private void cleanup() {
-                instance.getGame().getViewers().remove(player.getUniqueId());
-                if (player.isOnline()) {
-                    player.setSpectatorTarget(null);
-                    player.setGameMode(originalGM);
-                    player.teleport(originalLoc);
-                    player.removePotionEffect(PotionEffectType.SLOWNESS);
-                }
+        Bukkit.getScheduler().runTaskLater(instance, () -> {
+            if (!player.isOnline()) {
                 cam.remove();
-                msg.send(player, "play.finished");
+                instance.getGame().getViewers().remove(player.getUniqueId());
+                return;
             }
-        }.runTaskTimer(instance, 0L, 1L);
+
+            player.setSpectatorTarget(cam);
+
+            final int totalTicks = cine.getDuration() > 0 ? cine.getDuration() * 20 : (frames.size() - 1) * instance.getInterpolationSteps();
+
+            new BukkitRunnable() {
+                int currentTick = 0;
+                int lastFrameIdx = -1;
+
+                @Override
+                public void run() {
+                    if (!player.isOnline() || !instance.getGame().getViewers().contains(player.getUniqueId()) || currentTick >= totalTicks) {
+                        cleanup();
+                        this.cancel();
+                        return;
+                    }
+
+                    if (player.getSpectatorTarget() == null || !player.getSpectatorTarget().equals(cam)) {
+                        player.setSpectatorTarget(cam);
+                    }
+
+                    if (currentTick == 0 && cine.getBgmSound() != null && !cine.getBgmSound().isEmpty()) {
+                        player.playSound(player.getLocation(), cine.getBgmSound(), SoundCategory.MASTER, 1f, 1f);
+                    }
+
+                    double progress = (double) currentTick / totalTicks;
+                    double eased = easeInOutSine(progress);
+                    double exactSegment = eased * (frames.size() - 1);
+                    int segmentIndex = (int) Math.min(exactSegment, frames.size() - 2);
+                    double localT = exactSegment - segmentIndex;
+
+                    if (segmentIndex > lastFrameIdx) {
+                        lastFrameIdx = segmentIndex;
+                        Frame f = frames.get(segmentIndex);
+
+                        try {
+                            if (f.getCommands() != null && !f.getCommands().isEmpty()) {
+                                f.getCommands().forEach(c -> {
+                                    if (c == null || c.trim().isEmpty()) return;
+                                    String cmd = c.replace("%player%", player.getName());
+                                    if (cmd.startsWith("/")) cmd = cmd.substring(1);
+                                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                                });
+                            }
+
+                            String tStr = f.getTitle();
+                            String sStr = f.getSubtitle();
+                            boolean hasTitle = tStr != null && !tStr.trim().isEmpty();
+                            boolean hasSubtitle = sStr != null && !sStr.trim().isEmpty();
+
+                            if (hasTitle || hasSubtitle) {
+                                Component t = hasTitle ? MiniMessage.miniMessage().deserialize(tStr) : Component.empty();
+                                Component s = hasSubtitle ? MiniMessage.miniMessage().deserialize(sStr) : Component.empty();
+                                player.showTitle(Title.title(t, s, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))));
+                            }
+                        } catch (Throwable e) {
+                            instance.getLogger().warning("Safely skipped error on frame " + segmentIndex + ": " + e.getMessage());
+                        }
+                    }
+
+                    Frame fr0 = segmentIndex > 0 ? frames.get(segmentIndex - 1) : frames.get(segmentIndex);
+                    Frame fr1 = frames.get(segmentIndex);
+                    Frame fr2 = frames.get(segmentIndex + 1);
+                    Frame fr3 = segmentIndex < frames.size() - 2 ? frames.get(segmentIndex + 2) : fr2;
+
+                    double x = catmullRom(fr0.getX(), fr1.getX(), fr2.getX(), fr3.getX(), localT);
+                    double y = catmullRom(fr0.getY(), fr1.getY(), fr2.getY(), fr3.getY(), localT);
+                    double z = catmullRom(fr0.getZ(), fr1.getZ(), fr2.getZ(), fr3.getZ(), localT);
+
+                    float yaw = (float) catmullRom(smoothAngle(fr1.getYaw(), fr0.getYaw()), fr1.getYaw(), smoothAngle(fr1.getYaw(), fr2.getYaw()), smoothAngle(smoothAngle(fr1.getYaw(), fr2.getYaw()), fr3.getYaw()), localT);
+                    float pitch = (float) catmullRom(smoothAngle(fr1.getPitch(), fr0.getPitch()), fr1.getPitch(), smoothAngle(fr1.getPitch(), fr2.getPitch()), smoothAngle(smoothAngle(fr1.getPitch(), fr2.getPitch()), fr3.getPitch()), localT);
+
+                    if (cine.getShakeIntensity() > 0) {
+                        yaw += (Math.random() - 0.5) * cine.getShakeIntensity();
+                        pitch += (Math.random() - 0.5) * cine.getShakeIntensity();
+                    }
+
+                    Location targetLoc = new Location(cam.getWorld(), x, y, z, yaw, pitch);
+                    if (!targetLoc.getChunk().isLoaded()) {
+                        targetLoc.getChunk().load(true);
+                    }
+                    cam.teleport(targetLoc);
+
+                    if (cine.getStartZoom() != 0 || cine.getEndZoom() != 0) {
+                        int zoom = (int) (cine.getStartZoom() + (cine.getEndZoom() - cine.getStartZoom()) * eased);
+                        if (zoom > 0) player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 2, zoom - 1, false, false));
+                    }
+
+                    currentTick++;
+                }
+
+                private void cleanup() {
+                    instance.getGame().getViewers().remove(player.getUniqueId());
+                    if (player.isOnline()) {
+                        player.setSpectatorTarget(null);
+                        player.setGameMode(originalGM);
+                        player.teleport(originalLoc);
+                        player.removePotionEffect(PotionEffectType.SLOWNESS);
+                    }
+                    cam.remove();
+                    msg.send(player, "play.finished");
+                }
+            }.runTaskTimer(instance, 0L, 1L);
+        }, 10L);
     }
 
     @Subcommand("stop")
@@ -265,6 +295,7 @@ public class CinematicCMD extends BaseCommand {
             msg.send(sender, "play.force-stop", "player", player.getName());
         }
     }
+
     @Subcommand("path")
     @CommandCompletion("@cinematics")
     public void path(Player player, String cinematicName) {
