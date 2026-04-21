@@ -50,7 +50,7 @@ public class GuiListener implements Listener {
         else if (title.startsWith("Cine: ")) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();
-            if (clicked == null || clicked.getType() == Material.AIR) return;
+            if (clicked == null || clicked.getType() == Material.AIR || clicked.getType() == Material.BLACK_STAINED_GLASS_PANE) return;
 
             String cinematicName = title.replace("Cine: ", "");
             Cinematic cinematic = instance.getGame().getCinematics().get(cinematicName);
@@ -70,12 +70,69 @@ public class GuiListener implements Listener {
                     player.performCommand("cinematic focus " + cinematic.getName() + " set");
                 }
                 player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+            } else if (itemName.equals("Duration")) {
+                player.closeInventory();
+                instance.getChatInputManager().requestInput(player, "input.prompt-duration", input -> {
+                    try {
+                        cinematic.setDuration(Integer.parseInt(input));
+                        instance.getStorageManager().save(instance.getGame().getCinematics());
+                        instance.getMessageManager().send(player, "edit.generic-updated");
+                    } catch (NumberFormatException e) {
+                        instance.getMessageManager().send(player, "error.invalid-number");
+                    }
+                    player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+                });
+            } else if (itemName.equals("Background Music (BGM)")) {
+                if (event.isLeftClick()) {
+                    player.closeInventory();
+                    instance.getChatInputManager().requestInput(player, "input.prompt-bgm", input -> {
+                        cinematic.setBgmSound(input);
+                        instance.getStorageManager().save(instance.getGame().getCinematics());
+                        instance.getMessageManager().send(player, "edit.generic-updated");
+                        player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+                    });
+                } else if (event.isRightClick()) {
+                    cinematic.setBgmSound(null);
+                    instance.getStorageManager().save(instance.getGame().getCinematics());
+                    player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+                }
+            } else if (itemName.equals("Dolly Zoom (FOV)")) {
+                player.closeInventory();
+                if (event.isLeftClick()) {
+                    instance.getChatInputManager().requestInput(player, "input.prompt-zoom-start", input -> {
+                        try {
+                            cinematic.setStartZoom(Integer.parseInt(input));
+                            instance.getStorageManager().save(instance.getGame().getCinematics());
+                            instance.getMessageManager().send(player, "edit.generic-updated");
+                        } catch (Exception e) {
+                            instance.getMessageManager().send(player, "error.invalid-number");
+                        }
+                        player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+                    });
+                } else if (event.isRightClick()) {
+                    instance.getChatInputManager().requestInput(player, "input.prompt-zoom-end", input -> {
+                        try {
+                            cinematic.setEndZoom(Integer.parseInt(input));
+                            instance.getStorageManager().save(instance.getGame().getCinematics());
+                            instance.getMessageManager().send(player, "edit.generic-updated");
+                        } catch (Exception e) {
+                            instance.getMessageManager().send(player, "error.invalid-number");
+                        }
+                        player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+                    });
+                }
             } else if (itemName.equals("Camera Shake")) {
-                double current = cinematic.getShakeIntensity();
-                if (event.isLeftClick()) cinematic.setShakeIntensity(current + 1);
-                else if (event.isRightClick() && current >= 1) cinematic.setShakeIntensity(current - 1);
-                instance.getStorageManager().save(instance.getGame().getCinematics());
-                player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+                player.closeInventory();
+                instance.getChatInputManager().requestInput(player, "input.prompt-shake", input -> {
+                    try {
+                        cinematic.setShakeIntensity(Double.parseDouble(input));
+                        instance.getStorageManager().save(instance.getGame().getCinematics());
+                        instance.getMessageManager().send(player, "edit.generic-updated");
+                    } catch (NumberFormatException e) {
+                        instance.getMessageManager().send(player, "error.invalid-number");
+                    }
+                    player.openInventory(new CinematicDashboardGUI(instance).getDashboardGUI(cinematic));
+                });
             } else if (itemName.equals("Play Cinematic")) {
                 player.closeInventory();
                 player.performCommand("cinematic play " + player.getName() + " " + cinematic.getName());
@@ -175,13 +232,14 @@ public class GuiListener implements Listener {
             Cinematic cinematic = instance.getGame().getCinematics().get(cinematicName);
             if (cinematic == null) return;
 
+            Frame frame = cinematic.getFrames().get(frameIndex);
+
             if (clicked.getType() == Material.ARROW) {
                 player.openInventory(new CinematicFrameGUI(instance).getCinematicFrameGUI(player, cinematic, page));
                 return;
             }
 
             if (clicked.getType() == Material.COMMAND_BLOCK && event.isRightClick()) {
-                Frame frame = cinematic.getFrames().get(frameIndex);
                 int cmdIndex = event.getSlot();
                 if (cmdIndex >= 0 && cmdIndex < frame.getCommands().size()) {
                     String removed = frame.getCommands().remove(cmdIndex);
@@ -191,19 +249,39 @@ public class GuiListener implements Listener {
                 }
             }
 
-            // Gợi ý lệnh khi bấm vào các nút chức năng
             if (clicked.getType() == Material.WRITABLE_BOOK) {
                 player.closeInventory();
-                player.sendMessage(ChatColor.GREEN + "Gõ lệnh sau vào chat để thêm Command:");
-                player.sendMessage(ChatColor.AQUA + "/cinematic addcmd " + cinematicName + " " + frameIndex + " <lệnh>");
+                instance.getChatInputManager().requestInput(player, "input.prompt-cmd", input -> {
+                    frame.getCommands().add(input);
+                    instance.getStorageManager().save(instance.getGame().getCinematics());
+                    instance.getMessageManager().send(player, "edit.cmd-added", "cmd", input);
+                    player.openInventory(new CommandEditorGUI(instance).getCommandEditorGUI(cinematic, page, frameIndex));
+                });
             } else if (clicked.getType() == Material.NAME_TAG) {
                 player.closeInventory();
-                player.sendMessage(ChatColor.GREEN + "Gõ lệnh sau vào chat để thêm Title/Subtitle:");
-                player.sendMessage(ChatColor.AQUA + "/cinematic title " + cinematicName + " " + frameIndex + " <text>");
+                if (event.isLeftClick()) {
+                    instance.getChatInputManager().requestInput(player, "input.prompt-title", input -> {
+                        frame.setTitle(input);
+                        instance.getStorageManager().save(instance.getGame().getCinematics());
+                        instance.getMessageManager().send(player, "edit.title-updated");
+                        player.openInventory(new CommandEditorGUI(instance).getCommandEditorGUI(cinematic, page, frameIndex));
+                    });
+                } else if (event.isRightClick()) {
+                    instance.getChatInputManager().requestInput(player, "input.prompt-subtitle", input -> {
+                        frame.setSubtitle(input);
+                        instance.getStorageManager().save(instance.getGame().getCinematics());
+                        instance.getMessageManager().send(player, "edit.subtitle-updated");
+                        player.openInventory(new CommandEditorGUI(instance).getCommandEditorGUI(cinematic, page, frameIndex));
+                    });
+                }
             } else if (clicked.getType() == Material.NOTE_BLOCK) {
                 player.closeInventory();
-                player.sendMessage(ChatColor.GREEN + "Gõ lệnh sau vào chat để thêm Âm thanh:");
-                player.sendMessage(ChatColor.AQUA + "/cinematic addcmd " + cinematicName + " " + frameIndex + " playsound <sound> master %player%");
+                instance.getChatInputManager().requestInput(player, "input.prompt-sound", input -> {
+                    frame.getCommands().add("playsound " + input + " master %player%");
+                    instance.getStorageManager().save(instance.getGame().getCinematics());
+                    instance.getMessageManager().send(player, "edit.sound-added", "sound", input);
+                    player.openInventory(new CommandEditorGUI(instance).getCommandEditorGUI(cinematic, page, frameIndex));
+                });
             }
         }
     }

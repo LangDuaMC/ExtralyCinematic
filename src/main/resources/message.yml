@@ -1,51 +1,48 @@
 prefix: "<gold>[ExtralyCinematic]</gold> "
 
-error:
-  already-exist: "<red>Cinematic '<name>' already exists.</red>"
-  not-exist: "<red>Cinematic '<name>' does not exist.</red>"
-  already-recording: "<red>You are already recording a cinematic!</red>"
-  not-recording: "<red>You are not recording any cinematic.</red>"
-
-record:
-  title-rec: "<red><bold>RECORDING</bold></red>"
-  title-count: "<yellow><bold><count></bold></yellow>"
-  actionbar-timer: "<gold>Recording: <current>s / <total>s</gold>"
-  actionbar-free: "<gold>Recording Frames: <count></gold>"
-  start-free: "<green>Started free recording for '<name>'.</green>"
-  stop-free: "<green>Stopped recording '<name>'. Saved <count> frames.</green>"
-  finish: "<green>Finished recording! Saved <count> frames.</green>"
-
-play:
-  finished: "<green>Cinematic finished.</green>"
-  force-stop: "<red>Force stopped cinematic for <player>.</red>"
+input:
+  prompt-cmd: "<yellow>Enter command (without /):</yellow>"
+  prompt-title: "<yellow>Enter TITLE (MiniMessage supported):</yellow>"
+  prompt-subtitle: "<yellow>Enter SUBTITLE (MiniMessage supported):</yellow>"
+  prompt-sound: "<yellow>Enter Sound Name (e.g. entity.zombie.ambient):</yellow>"
+  prompt-duration: "<yellow>Enter Duration in seconds (Integer):</yellow>"
+  prompt-shake: "<yellow>Enter Shake Intensity (e.g. 0.5):</yellow>"
+  prompt-zoom-start: "<yellow>Enter Start Zoom level (Integer):</yellow>"
+  prompt-zoom-end: "<yellow>Enter End Zoom level (Integer):</yellow>"
+  prompt-bgm: "<yellow>Enter Background Music sound name:</yellow>"
+  cancel-hint: "<gray>(Type <red>cancel</red> to abort)</gray>"
+  cancelled: "<red>Action cancelled!</red>"
 
 edit:
-  addframe: "<green>Added frame <index> to '<name>'.</green>"
-  duration: "<green>Set duration of '<name>' to <val> seconds.</green>"
-  path-visual: "<yellow>Displaying camera path with particles...</yellow>"
-  focus-set: "<green>Set target focus for '<name>' to your location.</green>"
-  focus-clear: "<green>Cleared target focus for '<name>'.</green>"
-  shake-set: "<green>Set shake intensity for '<name>' to <val>.</green>"
-  zoom-set: "<green>Set Dolly Zoom for '<name>' (Start: <start>, End: <end>).</green>"
-  bgm-set: "<green>Set BGM for '<name>' to <val>.</green>"
-  bgm-clear: "<green>Cleared BGM for '<name>'.</green>"
-  title-set: "<green>Set title for frame <frame>.</green>"
-  subtitle-set: "<green>Set subtitle for frame <frame>.</green>"
-  delete: "<green>Deleted cinematic '<name>'.</green>"
-  cmd-add: "<green>Added command to frame <frame>.</green>"
-  cmd-added: "<green>Added command: /<cmd></green>"
-  title-updated: "<green>Title updated successfully!</green>"
-  subtitle-updated: "<green>Subtitle updated successfully!</green>"
-  sound-added: "<green>Added sound: <sound></green>"
+  cmd-added: "<green>Added command: <white>/<cmd></white></green>"
+  title-updated: "<green>Title updated!</green>"
+  subtitle-updated: "<green>Subtitle updated!</green>"
+  sound-added: "<green>Added sound: <white><sound></white></green>"
+  generic-updated: "<green>Successfully updated cinematic properties!</green>"
+  addframe: "<green>Added frame <index> to <name>!</green>"
+  path-visual: "<green>Visualizing path with particles...</green>"
+  delete: "<red>Deleted cinematic: <name></red>"
+
+error:
+  not-exist: "<red>Cinematic '<name>' does not exist!</red>"
+  already-exist: "<red>Cinematic '<name>' already exists!</red>"
+  invalid-number: "<red>Invalid number! Please enter a valid value.</red>"
+  already-recording: "<red>You are already recording a cinematic!</red>"
+  not-recording: "<red>You are not recording any cinematic!</red>"
+
+play:
+  finished: "<green>Cinematic playback finished.</green>"
+  force-stop: "<red>Force stopped cinematic for <player>.</red>"
+
+record:
+  title-rec: "<red>RECORDING</red>"
+  title-count: "<yellow><count></yellow>"
+  actionbar-timer: "<yellow>Recording: <current>/<total>s</yellow>"
+  actionbar-free: "<yellow>Recording frames: <count></yellow>"
+  finish: "<green>Recording finished! Saved <count> frames.</green>"
+  start-free: "<green>Started free recording for '<name>'. Type /cinematic record stop to finish.</green>"
+  stop-free: "<green>Stopped recording '<name>'. Saved <count> frames.</green>"
 
 list:
-  header: "<gold>--- Cinematic List ---</gold>"
-  item: "<yellow>- <name></yellow>"
-
-input:
-  prompt-cmd: "<yellow>Enter the command to execute (without /):</yellow>"
-  prompt-title: "<yellow>Enter TITLE for this frame (MiniMessage supported):</yellow>"
-  prompt-subtitle: "<yellow>Enter SUBTITLE for this frame (MiniMessage supported):</yellow>"
-  prompt-sound: "<yellow>Enter SOUND NAME (e.g. entity.ender_dragon.growl):</yellow>"
-  cancel-hint: "<gray>(Type <red>'cancel'</red> to abort)</gray>"
-  cancelled: "<red>Input action cancelled.</red>"
+  header: "<yellow>Available Cinematics:</yellow>"
+  item: "<gray>- <white><name></white></gray>"

@@ -20,6 +20,7 @@ public class Core extends JavaPlugin {
     private Game game;
     private StorageManager storageManager;
     private MessageManager messageManager;
+    private ChatInputManager chatInputManager;
 
     private boolean papiEnabled = false;
     private boolean wgEnabled = false;
@@ -34,6 +35,7 @@ public class Core extends JavaPlugin {
         this.messageManager = new MessageManager(this);
         this.game = new Game(this);
         this.storageManager = new StorageManager(this);
+        this.chatInputManager = new ChatInputManager(this);
 
         // 2. Nạp Data bọc lỗi
         Map<String, Cinematic> loaded = storageManager.load();
@@ -50,6 +52,7 @@ public class Core extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
         Bukkit.getPluginManager().registerEvents(new GuiListener(this), this);
         Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this), this);
+        Bukkit.getPluginManager().registerEvents(this.chatInputManager, this);
 
         // 5. Setup Hooks
         setupHooks();
@@ -103,6 +106,7 @@ public class Core extends JavaPlugin {
     public Game getGame() { return game; }
     public StorageManager getStorageManager() { return storageManager; }
     public MessageManager getMessageManager() { return messageManager; }
+    public ChatInputManager getChatInputManager() { return chatInputManager; }
     public int getInterpolationSteps() { return getConfig().getInt("interpolation-steps", 10); }
     public boolean isPapiEnabled() { return papiEnabled; }
 }

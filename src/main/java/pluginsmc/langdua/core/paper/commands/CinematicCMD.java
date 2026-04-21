@@ -166,7 +166,7 @@ public class CinematicCMD extends BaseCommand {
 
         ArmorStand cam = (ArmorStand) start.getWorld().spawnEntity(start, EntityType.ARMOR_STAND);
         cam.setVisible(false); cam.setGravity(false); cam.setInvulnerable(true);
-        cam.addScoreboardTag("extraly_cam"); // FIX BỎ QUÊN CAMERA TÀNG HÌNH
+        cam.addScoreboardTag("extraly_cam");
 
         player.setGameMode(GameMode.SPECTATOR);
         instance.getGame().getViewers().add(player.getUniqueId());
@@ -197,11 +197,29 @@ public class CinematicCMD extends BaseCommand {
                 if (segmentIndex > lastFrameIdx) {
                     lastFrameIdx = segmentIndex;
                     Frame f = frames.get(segmentIndex);
-                    f.getCommands().forEach(c -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), c.replace("%player%", player.getName())));
-                    if (!f.getTitle().isEmpty() || !f.getSubtitle().isEmpty()) {
-                        Component t = MiniMessage.miniMessage().deserialize(f.getTitle());
-                        Component s = MiniMessage.miniMessage().deserialize(f.getSubtitle());
-                        player.showTitle(Title.title(t, s, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))));
+
+                    try {
+                        if (f.getCommands() != null && !f.getCommands().isEmpty()) {
+                            f.getCommands().forEach(c -> {
+                                if (c == null || c.trim().isEmpty()) return;
+                                String cmd = c.replace("%player%", player.getName());
+                                if (cmd.startsWith("/")) cmd = cmd.substring(1);
+                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                            });
+                        }
+
+                        String tStr = f.getTitle();
+                        String sStr = f.getSubtitle();
+                        boolean hasTitle = tStr != null && !tStr.trim().isEmpty();
+                        boolean hasSubtitle = sStr != null && !sStr.trim().isEmpty();
+
+                        if (hasTitle || hasSubtitle) {
+                            Component t = hasTitle ? MiniMessage.miniMessage().deserialize(tStr) : Component.empty();
+                            Component s = hasSubtitle ? MiniMessage.miniMessage().deserialize(sStr) : Component.empty();
+                            player.showTitle(Title.title(t, s, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))));
+                        }
+                    } catch (Exception e) {
+                        instance.getLogger().warning("Loi thuc thi frame " + segmentIndex + ": " + e.getMessage());
                     }
                 }
 

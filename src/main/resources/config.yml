@@ -4,6 +4,3 @@ interpolation-steps: 10
 # Tên của Cinematic sẽ TỰ ĐỘNG CHIẾU khi người chơi lần đầu tiên vào server.
 # Để trống ("") nếu bạn muốn tắt tính năng này.
 auto-play-on-first-join: "Intro"
-mythicdungeons:
-  ZombieCrypt: CryptIntroCine
-  DragonLair: DragonAwakeCine

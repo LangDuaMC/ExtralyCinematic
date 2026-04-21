@@ -9,7 +9,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
 
 public class MessageManager {
@@ -23,37 +22,11 @@ public class MessageManager {
     }
 
     private void loadConfig() {
-        File file = new File(instance.getDataFolder(), "messages.yml");
+        File file = new File(instance.getDataFolder(), "message.yml");
         if (!file.exists()) {
-            try {
-                // Thử lấy file từ trong lõi jar ra
-                instance.saveResource("messages.yml", false);
-            } catch (IllegalArgumentException e) {
-                // NẾU QUÊN TẠO FILE TRONG SOURCE -> KHÔNG CRASH, TỰ TẠO FILE MỚI!
-                instance.getLogger().warning("Không tìm thấy messages.yml trong file jar! Đang tự động tạo file mặc định...");
-                try {
-                    file.getParentFile().mkdirs();
-                    file.createNewFile();
-                } catch (IOException ignored) {}
-            }
+            instance.saveResource("message.yml", false);
         }
-
         config = YamlConfiguration.loadConfiguration(file);
-
-        // Tự động chèn các câu mặc định nếu file bị trống
-        boolean save = false;
-        if (!config.contains("prefix")) { config.set("prefix", "<gold>[Cinematic]</gold> "); save = true; }
-        if (!config.contains("error.not-exist")) { config.set("error.not-exist", "<red>Cinematic '<name>' does not exist!</red>"); save = true; }
-        if (!config.contains("error.already-exist")) { config.set("error.already-exist", "<red>Cinematic '<name>' already exists!</red>"); save = true; }
-        if (!config.contains("play.finished")) { config.set("play.finished", "<green>Cinematic playback finished.</green>"); save = true; }
-        if (!config.contains("list.header")) { config.set("list.header", "<yellow>Available Cinematics:</yellow>"); save = true; }
-        if (!config.contains("list.item")) { config.set("list.item", "<gray>- <white><name></white></gray>"); save = true; }
-        if (!config.contains("record.title-rec")) { config.set("record.title-rec", "<red>RECORDING</red>"); save = true; }
-        if (!config.contains("record.title-count")) { config.set("record.title-count", "<yellow><count></yellow>"); save = true; }
-
-        if (save) {
-            try { config.save(file); } catch (IOException ignored) {}
-        }
     }
 
     private String getRawString(String path, String... placeholders) {
@@ -69,7 +42,7 @@ public class MessageManager {
     public void send(CommandSender sender, String path, String... placeholders) {
         String prefix = config.getString("prefix", "");
         String msg = getRawString(path, placeholders);
-        if (msg.isEmpty()) return;
+        if (msg.isEmpty() || msg.contains("Missing string")) return;
         sender.sendMessage(miniMessage.deserialize(prefix + msg));
     }
 
