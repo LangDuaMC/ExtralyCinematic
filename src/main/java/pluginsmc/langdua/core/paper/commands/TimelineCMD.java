@@ -166,6 +166,20 @@ public class TimelineCMD {
                         (String) args.get("timeline")
                 ))
                 .register();
+
+        new CommandAPICommand("timeline")
+                .withArguments(new LiteralArgument("play"))
+                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+                .withArguments(namedTimelineArg("timeline"))
+                .withArguments(new LiteralArgument("ignoreworld"))
+                .withPermission("cinematic.cmd")
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> instance.getGame().getTimelinePlayManager().play(
+                        sender,
+                        (Player) args.get("player"),
+                        (String) args.get("timeline"),
+                        true
+                ))
+                .register();
     }
 
     private void registerTransitionFade() {

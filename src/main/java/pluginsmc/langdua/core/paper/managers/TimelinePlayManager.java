@@ -20,6 +20,10 @@ public class TimelinePlayManager {
     }
 
     public void play(CommandSender sender, Player player, String timelineName) {
+        play(sender, player, timelineName, false);
+    }
+
+    public void play(CommandSender sender, Player player, String timelineName, boolean bypassWorldMetadata) {
         TimelineDefinition timeline = instance.getGame().getTimelines().get(timelineName);
         if (timeline == null) {
             instance.getMessageManager().send(sender, "timeline.not-exist", "name", timelineName);
@@ -31,7 +35,7 @@ public class TimelinePlayManager {
             return;
         }
 
-        instance.getGame().getPlayManager().play(sender, player, merged, timeline.getName());
+        instance.getGame().getPlayManager().play(sender, player, merged, timeline.getName(), bypassWorldMetadata);
     }
 
     private Cinematic buildPlayableTimeline(TimelineDefinition timeline, CommandSender sender) {

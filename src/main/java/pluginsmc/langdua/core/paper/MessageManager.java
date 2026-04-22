@@ -77,7 +77,7 @@ public class MessageManager {
             case "help.edit" -> "<gray>- <white>/cinematic edit</white> <gray>Open the editor GUI</gray>";
             case "help.list" -> "<gray>- <white>/cinematic list</white> <gray>List all cinematics</gray>";
             case "help.reload" -> "<gray>- <white>/cinematic reload</white> <gray>Reload config and data</gray>";
-            case "help.play" -> "<gray>- <white>/cinematic play <player> <name></white> <gray>Play a cinematic for a player</gray>";
+            case "help.play" -> "<gray>- <white>/cinematic play <player> <name> [ignoreworld]</white> <gray>Play a cinematic for a player, optionally bypassing recorded worlds</gray>";
             case "help.stop" -> "<gray>- <white>/cinematic stop <player></white> <gray>Stop a player's cinematic</gray>";
             case "help.path" -> "<gray>- <white>/cinematic path <name></white> <gray>Show the path with particles</gray>";
             case "help.delete" -> "<gray>- <white>/cinematic delete <name></white> <gray>Delete a cinematic</gray>";
@@ -116,7 +116,7 @@ public class MessageManager {
             case "timeline.help.delete" -> "<gray>- <white>/timeline delete <name></white> <gray>Delete a timeline</gray>";
             case "timeline.help.append" -> "<gray>- <white>/timeline append <timeline> <entry> <cinematic></white> <gray>Add a named cinematic entry</gray>";
             case "timeline.help.remove" -> "<gray>- <white>/timeline remove <timeline> <entry></white> <gray>Remove a named entry</gray>";
-            case "timeline.help.play" -> "<gray>- <white>/timeline play <player> <timeline></white> <gray>Play a timeline for a player</gray>";
+            case "timeline.help.play" -> "<gray>- <white>/timeline play <player> <timeline> [ignoreworld]</white> <gray>Play a timeline for a player, optionally bypassing recorded worlds</gray>";
             case "timeline.help.transition-fade" -> "<gray>- <white>/timeline transition fade <timeline> <entry> <ticks> <strength></white> <gray>Store fade metadata for an entry</gray>";
             case "timeline.help.transition-clear" -> "<gray>- <white>/timeline transition clear <timeline> <entry></white> <gray>Clear entry transition metadata</gray>";
 
