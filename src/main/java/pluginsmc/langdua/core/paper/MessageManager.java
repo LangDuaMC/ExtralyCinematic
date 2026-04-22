@@ -60,8 +60,9 @@ public class MessageManager {
 
             case "play.finished" -> "<green>Cinematic playback finished.</green>";
             case "play.force-stop" -> "<red>Force-stopped cinematic for <player>.</red>";
-            case "play.world-warning" -> "<yellow>Playing '<name>' would teleport across worlds. Use <white>--force</white> or <white>-f</white> to allow it, or <white>ignoreworld</white> to stay in the current world.</yellow>";
-            case "timeline.play.world-warning" -> "<yellow>Timeline '<name>' would teleport into entry '<entry>'. Mark that entry for world teleport, or use <white>--force</white> / <white>-f</white>.</yellow>";
+            case "play.world-warning" -> "<yellow>Playing '<name>' would teleport across worlds. Use <white>--force</white> to allow it, or <white>ignoreworld</white> to stay in the current world.</yellow>";
+            case "timeline.play.world-warning" -> "<yellow>Timeline '<name>' would teleport into entry '<entry>'. Mark that entry for world teleport, or use <white>--force</white>.</yellow>";
+            case "play.dfps-wip" -> "<yellow>Dynamic FPS is marked WIP. Falling back to per-tick polling for now.</yellow>";
 
             case "record.title-rec" -> "<red>RECORDING</red>";
             case "record.title-count" -> "<yellow><count></yellow>";
@@ -82,7 +83,7 @@ public class MessageManager {
             case "help.edit" -> "<gray>- <white>/cinematic edit</white> <gray>Open the editor GUI</gray>";
             case "help.list" -> "<gray>- <white>/cinematic list</white> <gray>List all cinematics</gray>";
             case "help.reload" -> "<gray>- <white>/cinematic reload</white> <gray>Reload config and data</gray>";
-            case "help.play" -> "<gray>- <white>/cinematic play <player> <name> [--force|-f|ignoreworld]</white> <gray>Play a cinematic with explicit world handling</gray>";
+            case "help.play" -> "<gray>- <white>/cinematic play <player> <name> [--force|ignoreworld] [--release|-r] [--fps=n|-f n] [--dfps|-d] [--posinterp=n|-p n] [--rotinterp=n] [--smoothpower=x|-s x] [--normalize=(p|r|pr)|-n mode]</white> <gray>Play a cinematic with runtime interpolation options</gray>";
             case "help.stop" -> "<gray>- <white>/cinematic stop <player></white> <gray>Stop a player's cinematic</gray>";
             case "help.path" -> "<gray>- <white>/cinematic path <name></white> <gray>Show the path with particles</gray>";
             case "help.delete" -> "<gray>- <white>/cinematic delete <name></white> <gray>Delete a cinematic</gray>";
@@ -121,7 +122,7 @@ public class MessageManager {
             case "timeline.help.delete" -> "<gray>- <white>/timeline delete <name></white> <gray>Delete a timeline</gray>";
             case "timeline.help.append" -> "<gray>- <white>/timeline append <timeline> <entry> <cinematic></white> <gray>Add a named cinematic entry</gray>";
             case "timeline.help.remove" -> "<gray>- <white>/timeline remove <timeline> <entry></white> <gray>Remove a named entry</gray>";
-            case "timeline.help.play" -> "<gray>- <white>/timeline play <player> <timeline> [--force|-f|ignoreworld]</white> <gray>Play a timeline with explicit world handling</gray>";
+            case "timeline.help.play" -> "<gray>- <white>/timeline play <player> <timeline> [--force|ignoreworld] [--release|-r] [--fps=n|-f n] [--dfps|-d] [--posinterp=n|-p n] [--rotinterp=n] [--smoothpower=x|-s x] [--normalize=(p|r|pr)|-n mode]</white> <gray>Play a timeline with runtime interpolation options</gray>";
             case "timeline.help.teleport-allow" -> "<gray>- <white>/timeline teleport <timeline> <entry> allow</white> <gray>Allow a world jump into that entry</gray>";
             case "timeline.help.teleport-deny" -> "<gray>- <white>/timeline teleport <timeline> <entry> deny</white> <gray>Disallow a world jump into that entry</gray>";
             case "timeline.help.transition-fade" -> "<gray>- <white>/timeline transition fade <timeline> <entry> <ticks> <strength></white> <gray>Store fade metadata for an entry</gray>";

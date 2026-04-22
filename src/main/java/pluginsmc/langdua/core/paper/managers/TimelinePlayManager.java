@@ -23,7 +23,7 @@ public class TimelinePlayManager {
         play(sender, player, timelineName, false);
     }
 
-    public void play(CommandSender sender, Player player, String timelineName, boolean bypassWorldMetadata) {
+    public void play(CommandSender sender, Player player, String timelineName, PlayManager.PlaybackOptions options) {
         TimelineDefinition timeline = instance.getGame().getTimelines().get(timelineName);
         if (timeline == null) {
             instance.getMessageManager().send(sender, "timeline.not-exist", "name", timelineName);
@@ -35,7 +35,22 @@ public class TimelinePlayManager {
             return;
         }
 
-        instance.getGame().getPlayManager().play(sender, player, merged, timeline.getName(), bypassWorldMetadata);
+        instance.getGame().getPlayManager().play(sender, player, merged, timeline.getName(), options);
+    }
+
+    public void play(CommandSender sender, Player player, String timelineName, boolean bypassWorldMetadata) {
+        int interpolationSteps = instance.getInterpolationSteps();
+        play(sender, player, timelineName, new PlayManager.PlaybackOptions(
+                bypassWorldMetadata,
+                interpolationSteps,
+                interpolationSteps,
+                1.0D,
+                false,
+                false,
+                false,
+                20,
+                false
+        ));
     }
 
     public TimelineEntry findUnmarkedWorldTeleportEntry(Player player, TimelineDefinition timeline) {
