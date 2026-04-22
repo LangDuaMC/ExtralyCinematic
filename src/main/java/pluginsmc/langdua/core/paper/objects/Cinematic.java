@@ -77,8 +77,12 @@ public class Cinematic {
         if (tracks == null) {
             tracks = new LinkedHashMap<>();
         }
-        if (!tracks.containsKey(DEFAULT_TRACK_ID)) {
-            tracks.put(DEFAULT_TRACK_ID, new CinematicTrack(DEFAULT_TRACK_ID));
+        CinematicTrack primaryTrack = tracks.get(DEFAULT_TRACK_ID);
+        if (primaryTrack == null) {
+            primaryTrack = new CinematicTrack(DEFAULT_TRACK_ID);
+            tracks.put(DEFAULT_TRACK_ID, primaryTrack);
+        } else if (primaryTrack.getId() == null || primaryTrack.getId().isBlank()) {
+            primaryTrack.setId(DEFAULT_TRACK_ID);
         }
         if (timeline == null) {
             timeline = new ArrayList<>();
@@ -86,14 +90,19 @@ public class Cinematic {
         if (timeline.isEmpty()) {
             timeline.add(new TimelineClip(DEFAULT_TRACK_ID));
         }
-        for (TimelineClip clip : timeline) {
+        for (int i = 0; i < timeline.size(); i++) {
+            TimelineClip clip = timeline.get(i);
+            if (clip == null) {
+                clip = new TimelineClip(DEFAULT_TRACK_ID);
+                timeline.set(i, clip);
+            }
             if (clip.getTrackId() == null || clip.getTrackId().isBlank()) {
                 clip.setTrackId(DEFAULT_TRACK_ID);
             }
             clip.setTransition(clip.getTransition());
         }
-        if (getPrimaryTrack().getDurationTicks() == 0 && duration > 0) {
-            getPrimaryTrack().setDurationTicks(duration * 20);
+        if (primaryTrack.getDurationTicks() == 0 && duration > 0) {
+            primaryTrack.setDurationTicks(duration * 20);
         }
     }
 

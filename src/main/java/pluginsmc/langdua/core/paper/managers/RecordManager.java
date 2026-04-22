@@ -9,6 +9,7 @@ import pluginsmc.langdua.core.paper.objects.Cinematic;
 import pluginsmc.langdua.core.paper.objects.Frame;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -16,7 +17,6 @@ public class RecordManager {
     private final Core instance;
     private final MessageManager msg;
     private final Map<UUID, Cinematic> activeRecordings = new HashMap<>();
-    private final Map<UUID, String> activeRecordingTrackIds = new HashMap<>();
     private final Map<UUID, BukkitRunnable> activeRecordingTasks = new HashMap<>();
 
     public RecordManager(Core instance) {
@@ -24,9 +24,9 @@ public class RecordManager {
         this.msg = instance.getMessageManager();
     }
 
-    private void captureFrame(Player player, Cinematic cinematic, String trackId) {
+    private void captureFrame(Player player, List<Frame> frames) {
         Location loc = player.getLocation().clone();
-        cinematic.getOrCreateTrack(trackId).getFrames().add(new Frame(
+        frames.add(new Frame(
                 loc.getWorld().getName(),
                 loc.getX(),
                 loc.getY(),
@@ -37,6 +37,7 @@ public class RecordManager {
     }
 
     public void startCountdownRecord(Player player, Cinematic cine, int seconds) {
+        List<Frame> frames = cine.getFrames();
         new BukkitRunnable() {
             int count = 3;
             @Override
@@ -45,7 +46,7 @@ public class RecordManager {
                 if (count == 0) {
                     msg.sendTitle(player, "record.title-rec", null, 0, 20, 20);
                     player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1, 1);
-                    recordTicks(player, cine, Cinematic.DEFAULT_TRACK_ID, seconds);
+                    recordTicks(player, frames, seconds);
                     this.cancel();
                 } else {
                     msg.sendTitle(player, "record.title-count", null, 0, 20, 20, "count", String.valueOf(count));
@@ -56,7 +57,7 @@ public class RecordManager {
         }.runTaskTimer(instance, 0L, 20L);
     }
 
-    private void recordTicks(Player player, Cinematic cinematic, String trackId, int seconds) {
+    private void recordTicks(Player player, List<Frame> frames, int seconds) {
         new BukkitRunnable() {
             int elapsedTicks = 0;
             int totalTicks = seconds * 20;
@@ -65,12 +66,12 @@ public class RecordManager {
                 if (!player.isOnline()) { this.cancel(); return; }
                 if (elapsedTicks >= totalTicks) {
                     instance.getStorageManager().save(instance.getGame().getCinematics());
-                    msg.send(player, "record.finish", "count", String.valueOf(cinematic.getOrCreateTrack(trackId).getFrames().size()));
+                    msg.send(player, "record.finish", "count", String.valueOf(frames.size()));
                     this.cancel();
                     return;
                 }
                 if (elapsedTicks % instance.getInterpolationSteps() == 0) {
-                    captureFrame(player, cinematic, trackId);
+                    captureFrame(player, frames);
                 }
                 if (elapsedTicks % 20 == 0) {
                     msg.sendActionBar(player, "record.actionbar-timer", "current", String.valueOf(elapsedTicks / 20), "total", String.valueOf(seconds));
@@ -81,20 +82,19 @@ public class RecordManager {
     }
 
     public void startFreeRecord(Player player, String cinematicName) {
-        startFreeRecord(player, cinematicName, Cinematic.DEFAULT_TRACK_ID);
-    }
-
-    public void startFreeRecord(Player player, String cinematicName, String trackId) {
         UUID playerUUID = player.getUniqueId();
         if (activeRecordings.containsKey(playerUUID)) {
             msg.send(player, "error.already-recording");
             return;
         }
         var cinematics = instance.getGame().getCinematics();
-        Cinematic cine = cinematics.computeIfAbsent(cinematicName, Cinematic::new);
-        cine.getOrCreateTrack(trackId);
+        if (cinematics.containsKey(cinematicName)) {
+            msg.send(player, "error.already-exist", "name", cinematicName);
+            return;
+        }
+        Cinematic cine = new Cinematic(cinematicName);
+        cinematics.put(cinematicName, cine);
         activeRecordings.put(playerUUID, cine);
-        activeRecordingTrackIds.put(playerUUID, trackId);
         msg.send(player, "record.start-free", "name", cinematicName);
 
         BukkitRunnable task = new BukkitRunnable() {
@@ -104,13 +104,12 @@ public class RecordManager {
                 if (!player.isOnline() || !activeRecordings.containsKey(playerUUID)) {
                     cancel();
                     activeRecordings.remove(playerUUID);
-                    activeRecordingTrackIds.remove(playerUUID);
                     activeRecordingTasks.remove(playerUUID);
                     return;
                 }
                 if (tickCounter % instance.getInterpolationSteps() == 0) {
-                    captureFrame(player, cine, trackId);
-                    msg.sendActionBar(player, "record.actionbar-free", "count", String.valueOf(cine.getOrCreateTrack(trackId).getFrames().size()));
+                    captureFrame(player, cine.getFrames());
+                    msg.sendActionBar(player, "record.actionbar-free", "count", String.valueOf(cine.getFrames().size()));
                 }
                 tickCounter++;
             }
@@ -119,20 +118,22 @@ public class RecordManager {
         activeRecordingTasks.put(playerUUID, task);
     }
 
+    public void startFreeRecord(Player player, String cinematicName, String trackId) {
+        startFreeRecord(player, cinematicName);
+    }
+
     public void stopFreeRecord(Player player) {
         UUID playerUUID = player.getUniqueId();
         if (!activeRecordings.containsKey(playerUUID)) {
             msg.send(player, "error.not-recording");
             return;
         }
-        String trackId = activeRecordingTrackIds.remove(playerUUID);
         BukkitRunnable task = activeRecordingTasks.remove(playerUUID);
         if (task != null) task.cancel();
         Cinematic cinematic = activeRecordings.remove(playerUUID);
         if (cinematic != null) {
             instance.getStorageManager().save(instance.getGame().getCinematics());
-            int count = cinematic.getOrCreateTrack(trackId == null ? Cinematic.DEFAULT_TRACK_ID : trackId).getFrames().size();
-            msg.send(player, "record.stop-free", "name", cinematic.getName(), "count", String.valueOf(count));
+            msg.send(player, "record.stop-free", "name", cinematic.getName(), "count", String.valueOf(cinematic.getFrames().size()));
         }
     }
 }

@@ -3,6 +3,7 @@ package pluginsmc.langdua.core.paper;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPILogger;
 import pluginsmc.langdua.core.paper.commands.CinematicCMD;
 import pluginsmc.langdua.core.paper.hooks.MythicMobsHook;
 import pluginsmc.langdua.core.paper.hooks.WorldGuardHook;
@@ -36,31 +37,32 @@ public class Core extends JavaPlugin {
         instance = this;
         saveDefaultConfig();
         CommandApiLifecycle.load(this);
+        CommandAPI.setLogger(CommandAPILogger.fromJavaLogger(getLogger()));
         CommandAPI.onEnable();
 
-        // 1. Khởi tạo
+        // 1. Initialize core services first so later stages can fail independently.
         this.messageManager = new MessageManager(this);
         this.game = new Game(this);
         this.storageManager = new StorageManager(this);
         this.chatInputManager = new ChatInputManager(this);
 
-        // 2. Nạp Data bọc lỗi
-        Map<String, Cinematic> loaded = storageManager.load();
-        if (loaded != null) {
-            game.getCinematics().putAll(loaded);
-        }
+        runStartupStage("cinematic data load", () -> {
+            Map<String, Cinematic> loaded = storageManager.load();
+            if (loaded != null) {
+                game.getCinematics().putAll(loaded);
+            }
+        });
 
-        // 3. Đăng ký Lệnh & Tab-complete
-        new CinematicCMD(this).register();
+        runStartupStage("command registration", () -> new CinematicCMD(this).register());
 
-        // 4. Đăng ký Sự kiện
-        Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new GuiListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this), this);
-        Bukkit.getPluginManager().registerEvents(this.chatInputManager, this);
+        runStartupStage("event registration", () -> {
+            Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
+            Bukkit.getPluginManager().registerEvents(new GuiListener(this), this);
+            Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this), this);
+            Bukkit.getPluginManager().registerEvents(this.chatInputManager, this);
+        });
 
-        // 5. Setup Hooks
-        setupHooks();
+        runStartupStage("hook setup", this::setupHooks);
 
         getLogger().info("ExtralyCinematic enabled successfully!");
     }
@@ -76,6 +78,15 @@ public class Core extends JavaPlugin {
         if (Bukkit.getPluginManager().getPlugin("MythicMobs") != null) {
             mmEnabled = true;
             Bukkit.getPluginManager().registerEvents(new MythicMobsHook(this), this);
+        }
+    }
+
+    private void runStartupStage(String stage, Runnable action) {
+        try {
+            action.run();
+        } catch (Throwable t) {
+            getLogger().severe("Startup stage failed: " + stage + ". Continuing with reduced functionality instead of disabling the plugin.");
+            t.printStackTrace();
         }
     }
 

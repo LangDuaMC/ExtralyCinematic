@@ -293,6 +293,9 @@ public class PlayManager {
                         return;
                     }
 
+                    if (player.getGameMode() != GameMode.SPECTATOR) {
+                        player.setGameMode(GameMode.SPECTATOR);
+                    }
                     if (player.getSpectatorTarget() == null || !player.getSpectatorTarget().equals(camera)) {
                         player.setSpectatorTarget(camera);
                     }
@@ -448,7 +451,9 @@ public class PlayManager {
             }
 
             if (player.isOnline()) {
-                player.setSpectatorTarget(null);
+                if (player.getGameMode() == GameMode.SPECTATOR) {
+                    player.setSpectatorTarget(null);
+                }
                 player.teleport(originalLocation);
                 Bukkit.getScheduler().runTaskLater(instance, () -> {
                     if (!player.isOnline()) {

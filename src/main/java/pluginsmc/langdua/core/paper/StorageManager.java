@@ -4,9 +4,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
 import pluginsmc.langdua.core.paper.objects.CinematicTrack;
 import pluginsmc.langdua.core.paper.objects.Frame;
-import pluginsmc.langdua.core.paper.objects.TimelineClip;
-import pluginsmc.langdua.core.paper.objects.TransitionEffect;
-import pluginsmc.langdua.core.paper.objects.TransitionMetadata;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,10 +24,6 @@ public class StorageManager {
 
     private int asInt(Object o) {
         return (o instanceof Number) ? ((Number) o).intValue() : 0;
-    }
-
-    private boolean asBoolean(Object o, boolean fallback) {
-        return (o instanceof Boolean) ? (Boolean) o : fallback;
     }
 
     private Frame deserializeFrame(Map<?, ?> map) {
@@ -91,32 +84,6 @@ public class StorageManager {
                 legacyFrames.add(serializeFrame(frame));
             }
             config.set("frames", legacyFrames);
-
-            List<Map<String, Object>> tracks = new ArrayList<>();
-            for (CinematicTrack track : cine.getTracks().values()) {
-                Map<String, Object> trackMap = new LinkedHashMap<>();
-                trackMap.put("id", track.getId());
-                trackMap.put("durationTicks", track.getDurationTicks());
-                List<Map<String, Object>> frames = new ArrayList<>();
-                for (Frame frame : track.getFrames()) {
-                    frames.add(serializeFrame(frame));
-                }
-                trackMap.put("frames", frames);
-                tracks.add(trackMap);
-            }
-            config.set("tracks", tracks);
-
-            List<Map<String, Object>> timeline = new ArrayList<>();
-            for (TimelineClip clip : cine.getTimeline()) {
-                TransitionMetadata transition = clip.getTransition();
-                Map<String, Object> clipMap = new LinkedHashMap<>();
-                clipMap.put("track", clip.getTrackId());
-                clipMap.put("durationTicks", transition.getDurationTicks());
-                clipMap.put("effect", transition.getEffect().name());
-                clipMap.put("strength", transition.getStrength());
-                timeline.add(clipMap);
-            }
-            config.set("timeline", timeline);
             try { config.save(file); } catch (IOException e) { e.printStackTrace(); }
         }
     }
@@ -176,32 +143,11 @@ public class StorageManager {
                     }
                 }
 
-                List<Map<?, ?>> timelineMaps = config.getMapList("timeline");
-                if (!timelineMaps.isEmpty()) {
-                    cine.getTimeline().clear();
-                    for (Map<?, ?> timelineMap : timelineMaps) {
-                        TimelineClip clip = new TimelineClip();
-                        clip.setTrackId((String) timelineMap.get("track"));
-                        TransitionMetadata transition = new TransitionMetadata();
-                        transition.setDurationTicks(asInt(timelineMap.get("durationTicks")));
-                        try {
-                            Object effectValue = timelineMap.get("effect");
-                            if (effectValue instanceof String effectName) {
-                                transition.setEffect(TransitionEffect.valueOf(effectName));
-                            }
-                        } catch (IllegalArgumentException ignored) {
-                            transition.setEffect(TransitionEffect.NONE);
-                        }
-                        transition.setStrength(Math.max(1, asInt(timelineMap.get("strength"))));
-                        clip.setTransition(transition);
-                        cine.getTimeline().add(clip);
-                    }
-                }
                 cine.ensureStructure();
                 cinematics.put(name, cine);
-            } catch (Exception e) {
-                instance.getLogger().severe("Lỗi định dạng khi đọc file: " + file.getName() + ". Đã bỏ qua để chống sập plugin!");
-                e.printStackTrace();
+            } catch (Throwable t) {
+                instance.getLogger().severe("Failed to load cinematic file '" + file.getName() + "'. Skipping it so the plugin can continue enabling.");
+                t.printStackTrace();
             }
         }
         return cinematics;
