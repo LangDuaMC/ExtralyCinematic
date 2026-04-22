@@ -33,11 +33,6 @@ dependencies {
     // CommandAPI
     implementation 'dev.jorel:commandapi-paper-shade:11.1.0'
 
-    // MiniMessage
-    implementation "net.kyori:adventure-api:4.17.0"
-    implementation "net.kyori:adventure-text-minimessage:4.17.0"
-    implementation "net.kyori:adventure-platform-bukkit:4.3.3"
-
     //Hooking
     compileOnly 'me.clip:placeholderapi:2.11.6'
     compileOnly 'com.sk89q.worldguard:worldguard-bukkit:7.0.9'
@@ -53,12 +48,14 @@ processResources {
     def props = [version: version]
     inputs.properties props
     filteringCharset 'UTF-8'
-    filesMatching('plugin.yml') {
+    filesMatching(['plugin.yml', 'paper-plugin.yml']) {
         expand props
     }
 }
 
 shadowJar {
+    archiveClassifier.set('all')
+    relocate 'dev.jorel.commandapi', 'pluginsmc.langdua.core.paper.lib.commandapi'
 }
 
 build.dependsOn shadowJar

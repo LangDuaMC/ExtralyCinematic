@@ -7,6 +7,7 @@ import dev.jorel.commandapi.arguments.GreedyStringArgument;
 import dev.jorel.commandapi.arguments.IntegerArgument;
 import dev.jorel.commandapi.arguments.LiteralArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -24,6 +25,7 @@ import pluginsmc.langdua.core.paper.objects.TransitionMetadata;
 import pluginsmc.langdua.core.paper.objects.Frame;
 
 public class CinematicCMD {
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
     private final Core instance;
     private final MessageManager msg;
 
@@ -33,6 +35,8 @@ public class CinematicCMD {
     }
 
     public void register() {
+        registerRootHelp();
+        registerHelp();
         registerEdit();
         registerList();
         registerReload();
@@ -59,6 +63,21 @@ public class CinematicCMD {
         registerShake();
         registerZoom();
         registerBgm();
+    }
+
+    private void registerRootHelp() {
+        new CommandAPICommand("cinematic")
+                .withPermission("cinematic.cmd")
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> sendHelp(sender))
+                .register();
+    }
+
+    private void registerHelp() {
+        new CommandAPICommand("cinematic")
+                .withArguments(new LiteralArgument("help"))
+                .withPermission("cinematic.cmd")
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> sendHelp(sender))
+                .register();
     }
 
     private void registerEdit() {
@@ -592,5 +611,44 @@ public class CinematicCMD {
             return false;
         }
         return true;
+    }
+
+    private void sendHelp(CommandSender sender) {
+        msg.send(sender, "help.header");
+        sendHelpLine(sender, "help.general");
+        sendHelpLine(sender, "help.edit");
+        sendHelpLine(sender, "help.list");
+        sendHelpLine(sender, "help.play");
+        sendHelpLine(sender, "help.stop");
+        sendHelpLine(sender, "help.path");
+        sendHelpLine(sender, "help.delete");
+        sendHelpLine(sender, "help.rec");
+        sendHelpLine(sender, "help.record-start");
+        sendHelpLine(sender, "help.record-start-track");
+        sendHelpLine(sender, "help.record-stop");
+        sendHelpLine(sender, "help.track-create");
+        sendHelpLine(sender, "help.addframe");
+        sendHelpLine(sender, "help.addframe-track");
+        sendHelpLine(sender, "help.timeline-append");
+        sendHelpLine(sender, "help.timeline-reset");
+        sendHelpLine(sender, "help.transition-darken");
+        sendHelpLine(sender, "help.transition-clear");
+        sendHelpLine(sender, "help.addcmd");
+        sendHelpLine(sender, "help.title");
+        sendHelpLine(sender, "help.subtitle");
+        sendHelpLine(sender, "help.duration");
+        sendHelpLine(sender, "help.focus-set");
+        sendHelpLine(sender, "help.focus-clear");
+        sendHelpLine(sender, "help.shake");
+        sendHelpLine(sender, "help.zoom");
+        sendHelpLine(sender, "help.bgm");
+
+        if (sender.hasPermission("cinematic.admin")) {
+            sendHelpLine(sender, "help.reload");
+        }
+    }
+
+    private void sendHelpLine(CommandSender sender, String path) {
+        sender.sendMessage(MINI_MESSAGE.deserialize(msg.getPrefix() + msg.getRawMessage(path)));
     }
 }

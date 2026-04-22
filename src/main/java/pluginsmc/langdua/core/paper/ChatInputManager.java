@@ -39,7 +39,7 @@ public class ChatInputManager implements Listener {
             String input = PlainTextComponentSerializer.plainText().serialize(event.message());
             Consumer<String> action = pendingInputs.remove(player.getUniqueId());
 
-            if (input.equalsIgnoreCase("huy") || input.equalsIgnoreCase("cancel")) {
+            if (input.equalsIgnoreCase("cancel")) {
                 instance.getMessageManager().send(player, "input.cancelled");
                 return;
             }

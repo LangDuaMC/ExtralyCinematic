@@ -1,0 +1,16 @@
+name: ExtralyCinematic
+version: ${version}
+main: pluginsmc.langdua.core.paper.Core
+bootstrapper: pluginsmc.langdua.core.paper.CoreBootstrap
+api-version: '1.21'
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+    WorldGuard:
+      load: BEFORE
+      required: false
+    MythicMobs:
+      load: BEFORE
+      required: false

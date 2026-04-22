@@ -3,7 +3,6 @@ package pluginsmc.langdua.core.paper;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIPaperConfig;
 import pluginsmc.langdua.core.paper.commands.CinematicCMD;
 import pluginsmc.langdua.core.paper.hooks.MythicMobsHook;
 import pluginsmc.langdua.core.paper.hooks.WorldGuardHook;
@@ -29,12 +28,14 @@ public class Core extends JavaPlugin {
     @Override
     public void onLoad() {
         instance = this;
-        CommandAPI.onLoad(new CommandAPIPaperConfig(this).silentLogs(true));
+        CommandApiLifecycle.load(this);
     }
 
     @Override
     public void onEnable() {
+        instance = this;
         saveDefaultConfig();
+        CommandApiLifecycle.load(this);
         CommandAPI.onEnable();
 
         // 1. Khởi tạo
@@ -82,7 +83,7 @@ public class Core extends JavaPlugin {
         // 1. Reload config.yml
         reloadConfig();
 
-        // 2. Reload message.yml
+        // 2. Reload in-memory message mappings
         if (messageManager != null) {
             messageManager.reload();
         }
@@ -125,7 +126,9 @@ public class Core extends JavaPlugin {
                 }
             }
         }
-        CommandAPI.onDisable();
+        if (CommandAPI.isLoaded()) {
+            CommandAPI.onDisable();
+        }
     }
 
     public static Core getInstance() { return instance; }
