@@ -42,6 +42,7 @@ public class TimelineStorageManager {
                 Map<String, Object> entryMap = new LinkedHashMap<>();
                 entryMap.put("name", entry.getName());
                 entryMap.put("cinematic", entry.getCinematicName());
+                entryMap.put("worldTeleport", entry.isWorldTeleport());
                 entryMap.put("transition.effect", entry.getTransition().getEffect().name());
                 entryMap.put("transition.durationTicks", entry.getTransition().getDurationTicks());
                 entryMap.put("transition.strength", entry.getTransition().getStrength());
@@ -83,6 +84,12 @@ public class TimelineStorageManager {
                     }
 
                     TimelineEntry entry = new TimelineEntry(entryName, cinematicName);
+                    Object worldTeleportValue = entryMap.get("worldTeleport");
+                    if (worldTeleportValue instanceof Boolean boolValue) {
+                        entry.setWorldTeleport(boolValue);
+                    } else if (worldTeleportValue instanceof String stringValue) {
+                        entry.setWorldTeleport(Boolean.parseBoolean(stringValue));
+                    }
                     TransitionMetadata transition = new TransitionMetadata();
                     Object effectValue = entryMap.get("transition.effect");
                     if (effectValue instanceof String effectName) {

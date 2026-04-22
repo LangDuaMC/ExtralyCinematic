@@ -38,6 +38,31 @@ public class TimelinePlayManager {
         instance.getGame().getPlayManager().play(sender, player, merged, timeline.getName(), bypassWorldMetadata);
     }
 
+    public TimelineEntry findUnmarkedWorldTeleportEntry(Player player, TimelineDefinition timeline) {
+        timeline.ensureStructure();
+        String previousWorld = player.getWorld().getName();
+
+        for (TimelineEntry entry : timeline.getEntries()) {
+            Cinematic cinematic = instance.getGame().getCinematics().get(entry.getCinematicName());
+            if (cinematic == null) {
+                continue;
+            }
+
+            String entryStartWorld = instance.getGame().getPlayManager().getStartWorldName(cinematic);
+            if (entryStartWorld != null && !entryStartWorld.equals(previousWorld) && !entry.isWorldTeleport()) {
+                return entry;
+            }
+
+            for (Frame frame : cinematic.getFrames()) {
+                if (frame != null && frame.getWorld() != null && !frame.getWorld().isBlank()) {
+                    previousWorld = frame.getWorld();
+                }
+            }
+        }
+
+        return null;
+    }
+
     private Cinematic buildPlayableTimeline(TimelineDefinition timeline, CommandSender sender) {
         List<Frame> mergedFrames = new ArrayList<>();
         int totalDuration = 0;

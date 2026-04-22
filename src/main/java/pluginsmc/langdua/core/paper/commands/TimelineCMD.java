@@ -40,19 +40,21 @@ public class TimelineCMD {
         registerAppend();
         registerRemove();
         registerPlay();
+        registerTeleportAllow();
+        registerTeleportDeny();
         registerTransitionFade();
         registerTransitionClear();
     }
 
     private void registerRootHelp() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withPermission("cinematic.cmd")
                 .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> sendHelp(sender))
                 .register();
     }
 
     private void registerHelp() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("help"))
                 .withPermission("cinematic.cmd")
                 .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> sendHelp(sender))
@@ -60,7 +62,7 @@ public class TimelineCMD {
     }
 
     private void registerList() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("list"))
                 .withPermission("cinematic.cmd")
                 .executes((sender, args) -> {
@@ -71,7 +73,7 @@ public class TimelineCMD {
     }
 
     private void registerCreate() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("create"))
                 .withArguments(new StringArgument("name"))
                 .withPermission("cinematic.cmd")
@@ -89,7 +91,7 @@ public class TimelineCMD {
     }
 
     private void registerDelete() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("delete"))
                 .withArguments(namedTimelineArg("name"))
                 .withPermission("cinematic.cmd")
@@ -107,7 +109,7 @@ public class TimelineCMD {
     }
 
     private void registerAppend() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("append"))
                 .withArguments(namedTimelineArg("timeline"))
                 .withArguments(new StringArgument("entry"))
@@ -132,7 +134,7 @@ public class TimelineCMD {
     }
 
     private void registerRemove() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("remove"))
                 .withArguments(namedTimelineArg("timeline"))
                 .withArguments(namedEntryArg("entry"))
@@ -155,35 +157,106 @@ public class TimelineCMD {
     }
 
     private void registerPlay() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("play"))
                 .withArguments(new EntitySelectorArgument.OnePlayer("player"))
                 .withArguments(namedTimelineArg("timeline"))
                 .withPermission("cinematic.cmd")
-                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> instance.getGame().getTimelinePlayManager().play(
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> tryPlay(
                         sender,
                         (Player) args.get("player"),
-                        (String) args.get("timeline")
+                        (String) args.get("timeline"),
+                        false,
+                        false
                 ))
                 .register();
 
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("play"))
                 .withArguments(new EntitySelectorArgument.OnePlayer("player"))
                 .withArguments(namedTimelineArg("timeline"))
                 .withArguments(new LiteralArgument("ignoreworld"))
                 .withPermission("cinematic.cmd")
-                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> instance.getGame().getTimelinePlayManager().play(
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> tryPlay(
                         sender,
                         (Player) args.get("player"),
                         (String) args.get("timeline"),
+                        true,
+                        false
+                ))
+                .register();
+
+        timelineCommand()
+                .withArguments(new LiteralArgument("play"))
+                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+                .withArguments(namedTimelineArg("timeline"))
+                .withArguments(new LiteralArgument("--force"))
+                .withPermission("cinematic.cmd")
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> tryPlay(
+                        sender,
+                        (Player) args.get("player"),
+                        (String) args.get("timeline"),
+                        false,
+                        true
+                ))
+                .register();
+
+        timelineCommand()
+                .withArguments(new LiteralArgument("play"))
+                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+                .withArguments(namedTimelineArg("timeline"))
+                .withArguments(new LiteralArgument("-f"))
+                .withPermission("cinematic.cmd")
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> tryPlay(
+                        sender,
+                        (Player) args.get("player"),
+                        (String) args.get("timeline"),
+                        false,
                         true
                 ))
                 .register();
     }
 
+    private void registerTeleportAllow() {
+        timelineCommand()
+                .withArguments(new LiteralArgument("teleport"))
+                .withArguments(namedTimelineArg("timeline"))
+                .withArguments(namedEntryArg("entry"))
+                .withArguments(new LiteralArgument("allow"))
+                .withPermission("cinematic.cmd")
+                .executes((sender, args) -> {
+                    TimelineEntry entry = requireEntry(sender, (String) args.get("timeline"), (String) args.get("entry"));
+                    if (entry == null) {
+                        return;
+                    }
+                    entry.setWorldTeleport(true);
+                    instance.getTimelineStorageManager().save(instance.getGame().getTimelines());
+                    msg.send(sender, "timeline.world-teleport-enabled", "entry", entry.getName());
+                })
+                .register();
+    }
+
+    private void registerTeleportDeny() {
+        timelineCommand()
+                .withArguments(new LiteralArgument("teleport"))
+                .withArguments(namedTimelineArg("timeline"))
+                .withArguments(namedEntryArg("entry"))
+                .withArguments(new LiteralArgument("deny"))
+                .withPermission("cinematic.cmd")
+                .executes((sender, args) -> {
+                    TimelineEntry entry = requireEntry(sender, (String) args.get("timeline"), (String) args.get("entry"));
+                    if (entry == null) {
+                        return;
+                    }
+                    entry.setWorldTeleport(false);
+                    instance.getTimelineStorageManager().save(instance.getGame().getTimelines());
+                    msg.send(sender, "timeline.world-teleport-disabled", "entry", entry.getName());
+                })
+                .register();
+    }
+
     private void registerTransitionFade() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("transition"))
                 .withArguments(new LiteralArgument("fade"))
                 .withArguments(namedTimelineArg("timeline"))
@@ -206,7 +279,7 @@ public class TimelineCMD {
     }
 
     private void registerTransitionClear() {
-        new CommandAPICommand("timeline")
+        timelineCommand()
                 .withArguments(new LiteralArgument("transition"))
                 .withArguments(new LiteralArgument("clear"))
                 .withArguments(namedTimelineArg("timeline"))
@@ -224,6 +297,28 @@ public class TimelineCMD {
                     msg.send(sender, "timeline.transition-cleared", "entry", entry.getName());
                 })
                 .register();
+    }
+
+    private void tryPlay(CommandSender sender, Player player, String timelineName, boolean bypassWorldMetadata, boolean forceWorldTeleport) {
+        TimelineDefinition timeline = requireTimeline(sender, timelineName);
+        if (timeline == null) {
+            return;
+        }
+
+        if (!bypassWorldMetadata && !forceWorldTeleport) {
+            TimelineEntry blockedEntry = instance.getGame().getTimelinePlayManager().findUnmarkedWorldTeleportEntry(player, timeline);
+            if (blockedEntry != null) {
+                msg.send(sender, "timeline.play.world-warning", "name", timelineName, "entry", blockedEntry.getName());
+                return;
+            }
+        }
+
+        instance.getGame().getTimelinePlayManager().play(sender, player, timelineName, bypassWorldMetadata);
+    }
+
+    private CommandAPICommand timelineCommand() {
+        return new CommandAPICommand("timeline")
+                .withAliases("sequence", "seq");
     }
 
     private Argument<String> namedTimelineArg(String nodeName) {
@@ -287,6 +382,8 @@ public class TimelineCMD {
         sendHelpLine(sender, "timeline.help.append");
         sendHelpLine(sender, "timeline.help.remove");
         sendHelpLine(sender, "timeline.help.play");
+        sendHelpLine(sender, "timeline.help.teleport-allow");
+        sendHelpLine(sender, "timeline.help.teleport-deny");
         sendHelpLine(sender, "timeline.help.transition-fade");
         sendHelpLine(sender, "timeline.help.transition-clear");
     }

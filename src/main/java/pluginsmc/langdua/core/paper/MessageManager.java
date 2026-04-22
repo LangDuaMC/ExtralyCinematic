@@ -55,35 +55,38 @@ public class MessageManager {
             case "error.not-exist" -> "<red>Cinematic '<name>' does not exist.</red>";
             case "error.already-exist" -> "<red>Cinematic '<name>' already exists.</red>";
             case "error.invalid-number" -> "<red>Invalid number.</red>";
-            case "error.already-recording" -> "<red>You are already recording a cinematic.</red>";
+            case "error.already-recording" -> "<red>You already have a recording armed or running.</red>";
             case "error.not-recording" -> "<red>You are not recording a cinematic.</red>";
 
             case "play.finished" -> "<green>Cinematic playback finished.</green>";
             case "play.force-stop" -> "<red>Force-stopped cinematic for <player>.</red>";
+            case "play.world-warning" -> "<yellow>Playing '<name>' would teleport across worlds. Use <white>--force</white> or <white>-f</white> to allow it, or <white>ignoreworld</white> to stay in the current world.</yellow>";
+            case "timeline.play.world-warning" -> "<yellow>Timeline '<name>' would teleport into entry '<entry>'. Mark that entry for world teleport, or use <white>--force</white> / <white>-f</white>.</yellow>";
 
             case "record.title-rec" -> "<red>RECORDING</red>";
             case "record.title-count" -> "<yellow><count></yellow>";
             case "record.actionbar-timer" -> "<yellow>Recording: <current>/<total>s</yellow>";
             case "record.actionbar-free" -> "<yellow>Recorded frames: <count></yellow>";
             case "record.finish" -> "<green>Recording finished. Saved <count> frames.</green>";
-            case "record.start-free" -> "<green>Started free recording for '<name>'. Use /cinematic record stop to finish.</green>";
-            case "record.stop-free" -> "<green>Stopped recording '<name>'. Saved <count> frames.</green>";
+            case "record.ready" -> "<green>Recording for '<name>' is armed. Punch once to start, then punch again to stop.</green>";
+            case "record.ready-duration" -> "<gray>Automatic stop after <seconds>s if you do not punch to stop earlier.</gray>";
+            case "record.started" -> "<green>Started recording '<name>'. Punch again to stop.</green>";
+            case "record.stopped-trigger" -> "<green>Stopped recording '<name>'. Saved <count> frames.</green>";
+            case "record.overwrite-warning" -> "<yellow>Cinematic '<name>' already exists. Run the same record command again to overwrite it.</yellow>";
 
             case "list.header" -> "<yellow>Available cinematics:</yellow>";
             case "list.item" -> "<gray>- <white><name></white></gray>";
 
             case "help.header" -> "<yellow>Cinematic commands:</yellow>";
-            case "help.general" -> "<gray>- <white>/cinematic</white> <dark_gray>|</dark_gray> <white>/cinematic help</white> <gray>Show this help</gray>";
+            case "help.general" -> "<gray>- <white>/cinematic</white> <dark_gray>|</dark_gray> <white>/cine</white> <dark_gray>|</dark_gray> <white>/cutscene</white> <dark_gray>|</dark_gray> <white>/cin</white> <gray>Show this help</gray>";
             case "help.edit" -> "<gray>- <white>/cinematic edit</white> <gray>Open the editor GUI</gray>";
             case "help.list" -> "<gray>- <white>/cinematic list</white> <gray>List all cinematics</gray>";
             case "help.reload" -> "<gray>- <white>/cinematic reload</white> <gray>Reload config and data</gray>";
-            case "help.play" -> "<gray>- <white>/cinematic play <player> <name> [ignoreworld]</white> <gray>Play a cinematic for a player, optionally bypassing recorded worlds</gray>";
+            case "help.play" -> "<gray>- <white>/cinematic play <player> <name> [--force|-f|ignoreworld]</white> <gray>Play a cinematic with explicit world handling</gray>";
             case "help.stop" -> "<gray>- <white>/cinematic stop <player></white> <gray>Stop a player's cinematic</gray>";
             case "help.path" -> "<gray>- <white>/cinematic path <name></white> <gray>Show the path with particles</gray>";
             case "help.delete" -> "<gray>- <white>/cinematic delete <name></white> <gray>Delete a cinematic</gray>";
-            case "help.rec" -> "<gray>- <white>/cinematic rec <name> <seconds></white> <gray>Countdown-record into a new cinematic</gray>";
-            case "help.record-start" -> "<gray>- <white>/cinematic record start <name></white> <gray>Start free recording</gray>";
-            case "help.record-stop" -> "<gray>- <white>/cinematic record stop</white> <gray>Stop free recording</gray>";
+            case "help.rec" -> "<gray>- <white>/cinematic rec <name> [duration]</white> <gray>Arm trigger-based recording; punch to start and stop</gray>";
             case "help.addframe" -> "<gray>- <white>/cinematic addframe <name></white> <gray>Add a frame to the cinematic</gray>";
             case "help.addcmd" -> "<gray>- <white>/cinematic addcmd <name> <frame> <command...></white> <gray>Add a frame command</gray>";
             case "help.title" -> "<gray>- <white>/cinematic title <name> <frame> <text...></white> <gray>Set the frame title</gray>";
@@ -109,14 +112,18 @@ public class MessageManager {
             case "timeline.empty" -> "<red>Timeline has no playable cinematic sequence.</red>";
             case "timeline.transition-updated" -> "<green>Updated transition metadata for entry '<entry>'.</green>";
             case "timeline.transition-cleared" -> "<green>Cleared transition metadata for entry '<entry>'.</green>";
+            case "timeline.world-teleport-enabled" -> "<green>Entry '<entry>' is now allowed to teleport across worlds.</green>";
+            case "timeline.world-teleport-disabled" -> "<green>Entry '<entry>' will no longer teleport across worlds.</green>";
             case "timeline.help.header" -> "<yellow>Timeline commands:</yellow>";
-            case "timeline.help.general" -> "<gray>- <white>/timeline</white> <dark_gray>|</dark_gray> <white>/timeline help</white> <gray>Show this help</gray>";
+            case "timeline.help.general" -> "<gray>- <white>/timeline</white> <dark_gray>|</dark_gray> <white>/sequence</white> <dark_gray>|</dark_gray> <white>/seq</white> <gray>Show this help</gray>";
             case "timeline.help.list" -> "<gray>- <white>/timeline list</white> <gray>List all timelines</gray>";
             case "timeline.help.create" -> "<gray>- <white>/timeline create <name></white> <gray>Create a timeline</gray>";
             case "timeline.help.delete" -> "<gray>- <white>/timeline delete <name></white> <gray>Delete a timeline</gray>";
             case "timeline.help.append" -> "<gray>- <white>/timeline append <timeline> <entry> <cinematic></white> <gray>Add a named cinematic entry</gray>";
             case "timeline.help.remove" -> "<gray>- <white>/timeline remove <timeline> <entry></white> <gray>Remove a named entry</gray>";
-            case "timeline.help.play" -> "<gray>- <white>/timeline play <player> <timeline> [ignoreworld]</white> <gray>Play a timeline for a player, optionally bypassing recorded worlds</gray>";
+            case "timeline.help.play" -> "<gray>- <white>/timeline play <player> <timeline> [--force|-f|ignoreworld]</white> <gray>Play a timeline with explicit world handling</gray>";
+            case "timeline.help.teleport-allow" -> "<gray>- <white>/timeline teleport <timeline> <entry> allow</white> <gray>Allow a world jump into that entry</gray>";
+            case "timeline.help.teleport-deny" -> "<gray>- <white>/timeline teleport <timeline> <entry> deny</white> <gray>Disallow a world jump into that entry</gray>";
             case "timeline.help.transition-fade" -> "<gray>- <white>/timeline transition fade <timeline> <entry> <ticks> <strength></white> <gray>Store fade metadata for an entry</gray>";
             case "timeline.help.transition-clear" -> "<gray>- <white>/timeline transition clear <timeline> <entry></white> <gray>Clear entry transition metadata</gray>";
 

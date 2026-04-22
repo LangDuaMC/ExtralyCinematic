@@ -4,6 +4,7 @@ public class TimelineEntry {
     private String name;
     private String cinematicName;
     private TransitionMetadata transition = new TransitionMetadata();
+    private boolean worldTeleport;
 
     public TimelineEntry() {
     }
@@ -35,5 +36,13 @@ public class TimelineEntry {
 
     public void setTransition(TransitionMetadata transition) {
         this.transition = transition == null ? new TransitionMetadata() : transition;
+    }
+
+    public boolean isWorldTeleport() {
+        return worldTeleport;
+    }
+
+    public void setWorldTeleport(boolean worldTeleport) {
+        this.worldTeleport = worldTeleport;
     }
 }

@@ -4,6 +4,7 @@ import com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import pluginsmc.langdua.core.paper.Core;
@@ -36,5 +37,14 @@ public class GlobalListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         instance.getGame().getViewers().remove(player.getUniqueId());
+        instance.getGame().getRecordManager().handleQuit(player);
+    }
+
+    @EventHandler
+    public void onArmSwing(PlayerAnimationEvent event) {
+        Player player = event.getPlayer();
+        if (instance.getGame().getRecordManager().hasTriggeredRecording(player)) {
+            instance.getGame().getRecordManager().handleTrigger(player);
+        }
     }
 }
