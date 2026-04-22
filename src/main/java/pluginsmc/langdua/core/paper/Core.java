@@ -2,7 +2,10 @@ package pluginsmc.langdua.core.paper;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPILogger;
 import pluginsmc.langdua.core.paper.commands.CinematicCMD;
+import pluginsmc.langdua.core.paper.commands.TimelineCMD;
 import pluginsmc.langdua.core.paper.hooks.MythicMobsHook;
 import pluginsmc.langdua.core.paper.hooks.WorldGuardHook;
 import pluginsmc.langdua.core.paper.listeners.GlobalListener;
@@ -17,6 +20,7 @@ public class Core extends JavaPlugin {
     private static Core instance;
     private Game game;
     private StorageManager storageManager;
+    private TimelineStorageManager timelineStorageManager;
     private MessageManager messageManager;
     private ChatInputManager chatInputManager;
 
@@ -27,35 +31,46 @@ public class Core extends JavaPlugin {
     @Override
     public void onLoad() {
         instance = this;
+        CommandApiLifecycle.load(this);
     }
 
     @Override
     public void onEnable() {
+        instance = this;
         saveDefaultConfig();
+        CommandApiLifecycle.load(this);
+        CommandAPI.setLogger(CommandAPILogger.fromJavaLogger(getLogger()));
+        CommandAPI.onEnable();
 
+        // 1. Initialize core services first so later stages can fail independently.
         this.messageManager = new MessageManager(this);
         this.game = new Game(this);
         this.storageManager = new StorageManager(this);
+        this.timelineStorageManager = new TimelineStorageManager(this);
         this.chatInputManager = new ChatInputManager(this);
 
-        Map<String, Cinematic> loaded = storageManager.load();
-        if (loaded != null) {
-            game.getCinematics().putAll(loaded);
-        }
+        runStartupStage("cinematic data load", () -> {
+            Map<String, Cinematic> loaded = storageManager.load();
+            if (loaded != null) {
+                game.getCinematics().putAll(loaded);
+            }
+        });
 
-        // Đăng ký lệnh theo chuẩn Bukkit
-        CinematicCMD cmd = new CinematicCMD(this);
-        getCommand("cinematic").setExecutor(cmd);
-        getCommand("cinematic").setTabCompleter(cmd);
+        runStartupStage("timeline data load", () -> game.getTimelines().putAll(timelineStorageManager.load()));
 
-        Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new GuiListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this), this);
-        Bukkit.getPluginManager().registerEvents(this.chatInputManager, this);
+        runStartupStage("command registration", () -> new CinematicCMD(this).register());
+        runStartupStage("timeline command registration", () -> new TimelineCMD(this).register());
 
-        setupHooks();
+        runStartupStage("event registration", () -> {
+            Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
+            Bukkit.getPluginManager().registerEvents(new GuiListener(this), this);
+            Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this), this);
+            Bukkit.getPluginManager().registerEvents(this.chatInputManager, this);
+        });
 
-        getLogger().info("ExtralyCinematic enabled successfully (Standard Bukkit Mode)!");
+        runStartupStage("hook setup", this::setupHooks);
+
+        getLogger().info("ExtralyCinematic enabled successfully!");
     }
 
     private void setupHooks() {
@@ -72,17 +87,36 @@ public class Core extends JavaPlugin {
         }
     }
 
+    private void runStartupStage(String stage, Runnable action) {
+        try {
+            action.run();
+        } catch (Throwable t) {
+            getLogger().severe("Startup stage failed: " + stage + ". Continuing with reduced functionality instead of disabling the plugin.");
+            t.printStackTrace();
+        }
+    }
+
     public void reloadPlugin() {
+        // 1. Reload config.yml
         reloadConfig();
+
+        // 2. Reload in-memory message mappings
         if (messageManager != null) {
             messageManager.reload();
         }
+
+        // 3. Reload cinematics (từ thư mục /cinematics)
         if (game != null && storageManager != null) {
             game.getCinematics().clear();
             Map<String, Cinematic> loaded = storageManager.load();
             if (loaded != null) {
                 game.getCinematics().putAll(loaded);
             }
+        }
+
+        if (game != null && timelineStorageManager != null) {
+            game.getTimelines().clear();
+            game.getTimelines().putAll(timelineStorageManager.load());
         }
     }
 
@@ -92,10 +126,15 @@ public class Core extends JavaPlugin {
             game.getPlayManager().shutdown();
         }
 
+        // 1. Lưu dữ liệu
         if (storageManager != null && game != null) {
             storageManager.save(game.getCinematics());
         }
+        if (timelineStorageManager != null && game != null) {
+            timelineStorageManager.save(game.getTimelines());
+        }
 
+        // 2. Dọn rác Ghost Entity (Camera)
         for (org.bukkit.World world : Bukkit.getWorlds()) {
             for (org.bukkit.entity.Entity entity : world.getEntitiesByClass(org.bukkit.entity.ArmorStand.class)) {
                 if (entity.getScoreboardTags().contains("extraly_cam")) {
@@ -112,11 +151,15 @@ public class Core extends JavaPlugin {
                 }
             }
         }
+        if (CommandAPI.isLoaded()) {
+            CommandAPI.onDisable();
+        }
     }
 
     public static Core getInstance() { return instance; }
     public Game getGame() { return game; }
     public StorageManager getStorageManager() { return storageManager; }
+    public TimelineStorageManager getTimelineStorageManager() { return timelineStorageManager; }
     public MessageManager getMessageManager() { return messageManager; }
     public ChatInputManager getChatInputManager() { return chatInputManager; }
     public int getInterpolationSteps() { return getConfig().getInt("interpolation-steps", 10); }

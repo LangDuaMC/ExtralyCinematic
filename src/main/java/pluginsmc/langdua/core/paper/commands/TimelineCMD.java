@@ -4,6 +4,7 @@ import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.jorel.commandapi.arguments.EntitySelectorArgument;
+import dev.jorel.commandapi.arguments.GreedyStringArgument;
 import dev.jorel.commandapi.arguments.IntegerArgument;
 import dev.jorel.commandapi.arguments.LiteralArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
@@ -166,8 +167,7 @@ public class TimelineCMD {
                         sender,
                         (Player) args.get("player"),
                         (String) args.get("timeline"),
-                        false,
-                        false
+                        null
                 ))
                 .register();
 
@@ -175,44 +175,13 @@ public class TimelineCMD {
                 .withArguments(new LiteralArgument("play"))
                 .withArguments(new EntitySelectorArgument.OnePlayer("player"))
                 .withArguments(namedTimelineArg("timeline"))
-                .withArguments(new LiteralArgument("ignoreworld"))
+                .withArguments(new GreedyStringArgument("options"))
                 .withPermission("cinematic.cmd")
                 .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> tryPlay(
                         sender,
                         (Player) args.get("player"),
                         (String) args.get("timeline"),
-                        true,
-                        false
-                ))
-                .register();
-
-        timelineCommand()
-                .withArguments(new LiteralArgument("play"))
-                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
-                .withArguments(namedTimelineArg("timeline"))
-                .withArguments(new LiteralArgument("--force"))
-                .withPermission("cinematic.cmd")
-                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> tryPlay(
-                        sender,
-                        (Player) args.get("player"),
-                        (String) args.get("timeline"),
-                        false,
-                        true
-                ))
-                .register();
-
-        timelineCommand()
-                .withArguments(new LiteralArgument("play"))
-                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
-                .withArguments(namedTimelineArg("timeline"))
-                .withArguments(new LiteralArgument("-f"))
-                .withPermission("cinematic.cmd")
-                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> tryPlay(
-                        sender,
-                        (Player) args.get("player"),
-                        (String) args.get("timeline"),
-                        false,
-                        true
+                        (String) args.get("options")
                 ))
                 .register();
     }
@@ -299,13 +268,21 @@ public class TimelineCMD {
                 .register();
     }
 
-    private void tryPlay(CommandSender sender, Player player, String timelineName, boolean bypassWorldMetadata, boolean forceWorldTeleport) {
+    private void tryPlay(CommandSender sender, Player player, String timelineName, String rawOptions) {
         TimelineDefinition timeline = requireTimeline(sender, timelineName);
         if (timeline == null) {
             return;
         }
 
-        if (!bypassWorldMetadata && !forceWorldTeleport) {
+        PlaybackOptionParser.ParsedPlaybackOptions parsedOptions;
+        try {
+            parsedOptions = PlaybackOptionParser.parse(rawOptions, instance.getInterpolationSteps());
+        } catch (IllegalArgumentException ex) {
+            sender.sendMessage(MINI_MESSAGE.deserialize(msg.getPrefix() + "<red>" + ex.getMessage() + "</red>"));
+            return;
+        }
+
+        if (!parsedOptions.playbackOptions().bypassWorldMetadata() && !parsedOptions.forceWorldTeleport()) {
             TimelineEntry blockedEntry = instance.getGame().getTimelinePlayManager().findUnmarkedWorldTeleportEntry(player, timeline);
             if (blockedEntry != null) {
                 msg.send(sender, "timeline.play.world-warning", "name", timelineName, "entry", blockedEntry.getName());
@@ -313,7 +290,7 @@ public class TimelineCMD {
             }
         }
 
-        instance.getGame().getTimelinePlayManager().play(sender, player, timelineName, bypassWorldMetadata);
+        instance.getGame().getTimelinePlayManager().play(sender, player, timelineName, parsedOptions.playbackOptions());
     }
 
     private CommandAPICommand timelineCommand() {

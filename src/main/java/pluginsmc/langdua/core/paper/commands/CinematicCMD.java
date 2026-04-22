@@ -427,17 +427,12 @@ public class CinematicCMD {
                 .register();
     }
 
-<<<<<<< HEAD
     private void tryPlay(CommandSender sender, Player player, String cinematicName, String rawOptions) {
-=======
-    private void tryPlay(CommandSender sender, Player player, String cinematicName, boolean bypassWorldMetadata, boolean forceWorldTeleport) {
->>>>>>> 1f33dcc (Refine recording controls and world-safe playback)
         Cinematic cinematic = requireCinematic(sender, cinematicName);
         if (cinematic == null) {
             return;
         }
 
-<<<<<<< HEAD
         PlaybackOptionParser.ParsedPlaybackOptions parsedOptions;
         try {
             parsedOptions = PlaybackOptionParser.parse(rawOptions, instance.getInterpolationSteps());
@@ -448,18 +443,11 @@ public class CinematicCMD {
 
         if (!parsedOptions.forceWorldTeleport()
                 && instance.getGame().getPlayManager().requiresWorldTeleport(player, cinematic, parsedOptions.playbackOptions().bypassWorldMetadata())) {
-=======
-        if (!forceWorldTeleport && instance.getGame().getPlayManager().requiresWorldTeleport(player, cinematic, bypassWorldMetadata)) {
->>>>>>> 1f33dcc (Refine recording controls and world-safe playback)
             msg.send(sender, "play.world-warning", "name", cinematicName);
             return;
         }
 
-<<<<<<< HEAD
         instance.getGame().getPlayManager().play(sender, player, cinematic, cinematicName, parsedOptions.playbackOptions());
-=======
-        instance.getGame().getPlayManager().play(sender, player, cinematic, cinematicName, bypassWorldMetadata);
->>>>>>> 1f33dcc (Refine recording controls and world-safe playback)
     }
 
     private CommandAPICommand cinematicCommand() {

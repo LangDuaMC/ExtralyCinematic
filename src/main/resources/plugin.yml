@@ -1,10 +1,5 @@
 name: ExtralyCinematic
-version: '${version}'
+version: 2.5
 main: pluginsmc.langdua.core.paper.Core
 api-version: '1.21'
 softdepend: [PlaceholderAPI, WorldGuard, MythicMobs]
-commands:
-  cinematic:
-    description: Main command for ExtralyCinematic
-    aliases: [cine]
-    permission: cinematic.cmd

@@ -1,16 +1,11 @@
 package pluginsmc.langdua.core.paper.objects;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Cinematic {
-    public static final String DEFAULT_TRACK_ID = "main";
-
     private String name;
-    private Map<String, CinematicTrack> tracks = new LinkedHashMap<>();
-    private List<TimelineClip> timeline = new ArrayList<>();
+    private List<Frame> frames = new ArrayList<>();
 
     private String focusWorld = null;
     private Double focusX = null;
@@ -23,7 +18,6 @@ public class Cinematic {
     private int endZoom = 0;
 
     private String bgmSound = null;
-
     private int duration = 0;
 
     public Cinematic(String name) {
@@ -34,65 +28,19 @@ public class Cinematic {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public Map<String, CinematicTrack> getTracks() {
-        return tracks;
-    }
-
-    public void setTracks(Map<String, CinematicTrack> tracks) {
-        this.tracks = tracks == null ? new LinkedHashMap<>() : new LinkedHashMap<>(tracks);
-    }
-
-    public List<TimelineClip> getTimeline() {
-        return timeline;
-    }
-
-    public void setTimeline(List<TimelineClip> timeline) {
-        this.timeline = timeline == null ? new ArrayList<>() : new ArrayList<>(timeline);
-    }
-
-    public CinematicTrack getPrimaryTrack() {
-        CinematicTrack track = tracks.get(DEFAULT_TRACK_ID);
-        if (track == null) {
-            track = new CinematicTrack(DEFAULT_TRACK_ID);
-            tracks.put(DEFAULT_TRACK_ID, track);
-        }
-        return track;
-    }
-
-    public CinematicTrack getOrCreateTrack(String trackId) {
-        return tracks.computeIfAbsent(trackId, CinematicTrack::new);
-    }
-
     public List<Frame> getFrames() {
-        return getPrimaryTrack().getFrames();
+        ensureStructure();
+        return frames;
     }
 
     public void setFrames(List<Frame> frames) {
-        getPrimaryTrack().setFrames(frames);
+        this.frames = frames == null ? new ArrayList<>() : new ArrayList<>(frames);
+        ensureStructure();
     }
 
     public void ensureStructure() {
-        if (tracks == null) {
-            tracks = new LinkedHashMap<>();
-        }
-        if (!tracks.containsKey(DEFAULT_TRACK_ID)) {
-            tracks.put(DEFAULT_TRACK_ID, new CinematicTrack(DEFAULT_TRACK_ID));
-        }
-        if (timeline == null) {
-            timeline = new ArrayList<>();
-        }
-        if (timeline.isEmpty()) {
-            timeline.add(new TimelineClip(DEFAULT_TRACK_ID));
-        }
-        for (TimelineClip clip : timeline) {
-            if (clip.getTrackId() == null || clip.getTrackId().isBlank()) {
-                clip.setTrackId(DEFAULT_TRACK_ID);
-            }
-        }
-
-        CinematicTrack primaryTrack = tracks.get(DEFAULT_TRACK_ID);
-        if (primaryTrack != null && primaryTrack.getDurationTicks() == 0 && duration > 0) {
-            primaryTrack.setDurationTicks(duration * 20);
+        if (frames == null) {
+            frames = new ArrayList<>();
         }
     }
 
