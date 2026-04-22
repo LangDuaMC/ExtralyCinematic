@@ -5,6 +5,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPILogger;
 import pluginsmc.langdua.core.paper.commands.CinematicCMD;
+import pluginsmc.langdua.core.paper.commands.TimelineCMD;
 import pluginsmc.langdua.core.paper.hooks.MythicMobsHook;
 import pluginsmc.langdua.core.paper.hooks.WorldGuardHook;
 import pluginsmc.langdua.core.paper.listeners.GlobalListener;
@@ -19,6 +20,7 @@ public class Core extends JavaPlugin {
     private static Core instance;
     private Game game;
     private StorageManager storageManager;
+    private TimelineStorageManager timelineStorageManager;
     private MessageManager messageManager;
     private ChatInputManager chatInputManager;
 
@@ -44,6 +46,7 @@ public class Core extends JavaPlugin {
         this.messageManager = new MessageManager(this);
         this.game = new Game(this);
         this.storageManager = new StorageManager(this);
+        this.timelineStorageManager = new TimelineStorageManager(this);
         this.chatInputManager = new ChatInputManager(this);
 
         runStartupStage("cinematic data load", () -> {
@@ -53,7 +56,10 @@ public class Core extends JavaPlugin {
             }
         });
 
+        runStartupStage("timeline data load", () -> game.getTimelines().putAll(timelineStorageManager.load()));
+
         runStartupStage("command registration", () -> new CinematicCMD(this).register());
+        runStartupStage("timeline command registration", () -> new TimelineCMD(this).register());
 
         runStartupStage("event registration", () -> {
             Bukkit.getPluginManager().registerEvents(new GlobalListener(this), this);
@@ -107,6 +113,11 @@ public class Core extends JavaPlugin {
                 game.getCinematics().putAll(loaded);
             }
         }
+
+        if (game != null && timelineStorageManager != null) {
+            game.getTimelines().clear();
+            game.getTimelines().putAll(timelineStorageManager.load());
+        }
     }
 
     @Override
@@ -118,6 +129,9 @@ public class Core extends JavaPlugin {
         // 1. Lưu dữ liệu
         if (storageManager != null && game != null) {
             storageManager.save(game.getCinematics());
+        }
+        if (timelineStorageManager != null && game != null) {
+            timelineStorageManager.save(game.getTimelines());
         }
 
         // 2. Dọn rác Ghost Entity (Camera)
@@ -145,6 +159,7 @@ public class Core extends JavaPlugin {
     public static Core getInstance() { return instance; }
     public Game getGame() { return game; }
     public StorageManager getStorageManager() { return storageManager; }
+    public TimelineStorageManager getTimelineStorageManager() { return timelineStorageManager; }
     public MessageManager getMessageManager() { return messageManager; }
     public ChatInputManager getChatInputManager() { return chatInputManager; }
     public int getInterpolationSteps() { return getConfig().getInt("interpolation-steps", 10); }

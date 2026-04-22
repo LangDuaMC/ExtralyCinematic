@@ -83,15 +83,8 @@ public class MessageManager {
             case "help.delete" -> "<gray>- <white>/cinematic delete <name></white> <gray>Delete a cinematic</gray>";
             case "help.rec" -> "<gray>- <white>/cinematic rec <name> <seconds></white> <gray>Countdown-record into a new cinematic</gray>";
             case "help.record-start" -> "<gray>- <white>/cinematic record start <name></white> <gray>Start free recording</gray>";
-            case "help.record-start-track" -> "<gray>- <white>/cinematic record start <name> <track></white> <gray>Start free recording into a track</gray>";
             case "help.record-stop" -> "<gray>- <white>/cinematic record stop</white> <gray>Stop free recording</gray>";
-            case "help.track-create" -> "<gray>- <white>/cinematic track create <name> <track></white> <gray>Create a track</gray>";
-            case "help.addframe" -> "<gray>- <white>/cinematic addframe <name></white> <gray>Add a frame to the default track</gray>";
-            case "help.addframe-track" -> "<gray>- <white>/cinematic addframe <name> <track></white> <gray>Add a frame to a track</gray>";
-            case "help.timeline-append" -> "<gray>- <white>/cinematic timeline append <name> <track></white> <gray>Append a track clip to the timeline</gray>";
-            case "help.timeline-reset" -> "<gray>- <white>/cinematic timeline reset <name></white> <gray>Reset the timeline</gray>";
-            case "help.transition-darken" -> "<gray>- <white>/cinematic transition darken <name> <clip> <ticks> <strength></white> <gray>Set a darken transition</gray>";
-            case "help.transition-clear" -> "<gray>- <white>/cinematic transition clear <name> <clip></white> <gray>Clear a transition</gray>";
+            case "help.addframe" -> "<gray>- <white>/cinematic addframe <name></white> <gray>Add a frame to the cinematic</gray>";
             case "help.addcmd" -> "<gray>- <white>/cinematic addcmd <name> <frame> <command...></white> <gray>Add a frame command</gray>";
             case "help.title" -> "<gray>- <white>/cinematic title <name> <frame> <text...></white> <gray>Set the frame title</gray>";
             case "help.subtitle" -> "<gray>- <white>/cinematic subtitle <name> <frame> <text...></white> <gray>Set the frame subtitle</gray>";
@@ -101,6 +94,31 @@ public class MessageManager {
             case "help.shake" -> "<gray>- <white>/cinematic shake <name> <intensity></white> <gray>Set shake intensity</gray>";
             case "help.zoom" -> "<gray>- <white>/cinematic zoom <name> <start> <end></white> <gray>Set start and end zoom</gray>";
             case "help.bgm" -> "<gray>- <white>/cinematic bgm <name> <sound></white> <gray>Set BGM or use 'clear'</gray>";
+
+            case "timeline.list.header" -> "<yellow>Available timelines:</yellow>";
+            case "timeline.list.item" -> "<gray>- <white><name></white></gray>";
+            case "timeline.not-exist" -> "<red>Timeline '<name>' does not exist.</red>";
+            case "timeline.already-exist" -> "<red>Timeline '<name>' already exists.</red>";
+            case "timeline.created" -> "<green>Created timeline '<name>'.</green>";
+            case "timeline.deleted" -> "<red>Deleted timeline '<name>'.</red>";
+            case "timeline.entry-added" -> "<green>Added entry '<entry>' using cinematic '<name>'.</green>";
+            case "timeline.entry-removed" -> "<green>Removed entry '<entry>'.</green>";
+            case "timeline.entry-exists" -> "<red>Timeline entry '<entry>' already exists.</red>";
+            case "timeline.entry-not-exist" -> "<red>Timeline entry '<entry>' does not exist.</red>";
+            case "timeline.entry-invalid" -> "<red>Timeline entry '<entry>' points to cinematic '<name>', which is not playable.</red>";
+            case "timeline.empty" -> "<red>Timeline has no playable cinematic sequence.</red>";
+            case "timeline.transition-updated" -> "<green>Updated transition metadata for entry '<entry>'.</green>";
+            case "timeline.transition-cleared" -> "<green>Cleared transition metadata for entry '<entry>'.</green>";
+            case "timeline.help.header" -> "<yellow>Timeline commands:</yellow>";
+            case "timeline.help.general" -> "<gray>- <white>/timeline</white> <dark_gray>|</dark_gray> <white>/timeline help</white> <gray>Show this help</gray>";
+            case "timeline.help.list" -> "<gray>- <white>/timeline list</white> <gray>List all timelines</gray>";
+            case "timeline.help.create" -> "<gray>- <white>/timeline create <name></white> <gray>Create a timeline</gray>";
+            case "timeline.help.delete" -> "<gray>- <white>/timeline delete <name></white> <gray>Delete a timeline</gray>";
+            case "timeline.help.append" -> "<gray>- <white>/timeline append <timeline> <entry> <cinematic></white> <gray>Add a named cinematic entry</gray>";
+            case "timeline.help.remove" -> "<gray>- <white>/timeline remove <timeline> <entry></white> <gray>Remove a named entry</gray>";
+            case "timeline.help.play" -> "<gray>- <white>/timeline play <player> <timeline></white> <gray>Play a timeline for a player</gray>";
+            case "timeline.help.transition-fade" -> "<gray>- <white>/timeline transition fade <timeline> <entry> <ticks> <strength></white> <gray>Store fade metadata for an entry</gray>";
+            case "timeline.help.transition-clear" -> "<gray>- <white>/timeline transition clear <timeline> <entry></white> <gray>Clear entry transition metadata</gray>";
 
             case "admin.reload" -> "<green>Reloaded plugin configuration and cinematic data.</green>";
 

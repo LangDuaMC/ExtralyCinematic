@@ -19,11 +19,7 @@ import org.bukkit.util.Vector;
 import pluginsmc.langdua.core.paper.Core;
 import pluginsmc.langdua.core.paper.hooks.PapiHook;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
-import pluginsmc.langdua.core.paper.objects.CinematicTrack;
 import pluginsmc.langdua.core.paper.objects.Frame;
-import pluginsmc.langdua.core.paper.objects.TimelineClip;
-import pluginsmc.langdua.core.paper.objects.TransitionEffect;
-import pluginsmc.langdua.core.paper.objects.TransitionMetadata;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -44,31 +40,31 @@ public class PlayManager {
     }
 
     public void play(CommandSender sender, Player player, String cinematicName) {
-        var game = instance.getGame();
-        var msg = instance.getMessageManager();
+        Cinematic cinematic = instance.getGame().getCinematics().get(cinematicName);
+        if (cinematic == null) {
+            instance.getMessageManager().send(sender, "error.not-exist", "name", cinematicName);
+            return;
+        }
+        play(sender, player, cinematic, cinematicName);
+    }
 
+    public void play(CommandSender sender, Player player, Cinematic cinematic, String playbackName) {
         if (sessions.containsKey(player.getUniqueId())) {
             sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Player is already watching a cinematic!</red>"));
             return;
         }
 
-        Cinematic cinematic = game.getCinematics().get(cinematicName);
-        if (cinematic == null) {
-            msg.send(sender, "error.not-exist", "name", cinematicName);
-            return;
-        }
         cinematic.ensureStructure();
-
-        List<ResolvedClip> clips = resolveTimeline(cinematic);
-        if (clips.isEmpty()) {
-            msg.send(sender, "error.not-exist", "name", cinematicName);
+        List<Frame> frames = cinematic.getFrames();
+        if (frames.size() < 2) {
+            instance.getMessageManager().send(sender, "error.not-exist", "name", playbackName);
             return;
         }
 
-        ResolvedClip firstClip = clips.get(0);
-        Frame firstFrame = firstClip.frames().getFirst();
+        Frame firstFrame = frames.getFirst();
         World world = Bukkit.getWorld(firstFrame.getWorld());
         if (world == null) {
+            instance.getLogger().warning("Cannot play '" + playbackName + "' because the first frame world is unavailable.");
             return;
         }
 
@@ -83,19 +79,19 @@ public class PlayManager {
                 firstFrame.getPitch()
         );
 
-        game.getViewers().add(player.getUniqueId());
+        instance.getGame().getViewers().add(player.getUniqueId());
         player.setGameMode(GameMode.SPECTATOR);
         startLocation.getChunk().load();
 
         player.teleportAsync(startLocation).thenAccept(success -> {
             if (!success || !player.isOnline()) {
-                game.getViewers().remove(player.getUniqueId());
+                instance.getGame().getViewers().remove(player.getUniqueId());
                 return;
             }
 
             Bukkit.getScheduler().runTaskLater(instance, () -> {
-                if (!player.isOnline() || !game.getViewers().contains(player.getUniqueId())) {
-                    game.getViewers().remove(player.getUniqueId());
+                if (!player.isOnline() || !instance.getGame().getViewers().contains(player.getUniqueId())) {
+                    instance.getGame().getViewers().remove(player.getUniqueId());
                     return;
                 }
 
@@ -106,7 +102,8 @@ public class PlayManager {
                         sender,
                         player,
                         cinematic,
-                        clips,
+                        playbackName,
+                        frames,
                         camera,
                         originalLocation,
                         originalGameMode
@@ -142,35 +139,6 @@ public class PlayManager {
         camera.setSilent(true);
         camera.addScoreboardTag(CAMERA_TAG);
         return camera;
-    }
-
-    private List<ResolvedClip> resolveTimeline(Cinematic cinematic) {
-        List<ResolvedClip> resolved = new ArrayList<>();
-        for (TimelineClip clip : cinematic.getTimeline()) {
-            CinematicTrack track = cinematic.getTracks().get(clip.getTrackId());
-            if (track == null || !track.isPlayable()) {
-                continue;
-            }
-            int durationTicks = track.getDurationTicks();
-            if (durationTicks <= 0) {
-                if (resolved.isEmpty() && cinematic.getDuration() > 0) {
-                    durationTicks = cinematic.getDuration() * 20;
-                } else {
-                    durationTicks = Math.max(1, (track.getFrames().size() - 1) * instance.getInterpolationSteps());
-                }
-            }
-            resolved.add(new ResolvedClip(track, clip.getTransition(), durationTicks, track.getFrames()));
-        }
-        if (resolved.isEmpty() && cinematic.getPrimaryTrack().isPlayable()) {
-            CinematicTrack track = cinematic.getPrimaryTrack();
-            int durationTicks = track.getDurationTicks() > 0
-                    ? track.getDurationTicks()
-                    : (cinematic.getDuration() > 0
-                    ? cinematic.getDuration() * 20
-                    : Math.max(1, (track.getFrames().size() - 1) * instance.getInterpolationSteps()));
-            resolved.add(new ResolvedClip(track, new TransitionMetadata(), durationTicks, track.getFrames()));
-        }
-        return resolved;
     }
 
     private double catmullRom(double p0, double p1, double p2, double p3, double t) {
@@ -238,23 +206,24 @@ public class PlayManager {
         private final CommandSender source;
         private final Player player;
         private final Cinematic cinematic;
-        private final List<ResolvedClip> clips;
+        private final String playbackName;
+        private final List<Frame> frames;
         private final ArmorStand camera;
         private final Location originalLocation;
         private final GameMode originalGameMode;
         private final Random shakeRandom;
-        private final int[] lastDispatchedFrame;
 
         private BukkitRunnable task;
-        private int clipIndex = 0;
-        private int clipTick = 0;
+        private int tick = 0;
+        private int lastDispatchedFrame = -1;
         private boolean stopped;
 
         private PlaybackSession(
                 CommandSender source,
                 Player player,
                 Cinematic cinematic,
-                List<ResolvedClip> clips,
+                String playbackName,
+                List<Frame> frames,
                 ArmorStand camera,
                 Location originalLocation,
                 GameMode originalGameMode
@@ -262,15 +231,12 @@ public class PlayManager {
             this.source = source;
             this.player = player;
             this.cinematic = cinematic;
-            this.clips = clips;
+            this.playbackName = playbackName;
+            this.frames = frames;
             this.camera = camera;
             this.originalLocation = originalLocation;
             this.originalGameMode = originalGameMode;
-            this.shakeRandom = new Random(player.getUniqueId().getMostSignificantBits() ^ cinematic.getName().hashCode());
-            this.lastDispatchedFrame = new int[clips.size()];
-            for (int i = 0; i < lastDispatchedFrame.length; i++) {
-                lastDispatchedFrame[i] = -1;
-            }
+            this.shakeRandom = new Random(player.getUniqueId().getMostSignificantBits() ^ playbackName.hashCode());
         }
 
         private void start() {
@@ -287,12 +253,6 @@ public class PlayManager {
                         return;
                     }
 
-                    if (clipIndex >= clips.size()) {
-                        stop(false, null);
-                        cancel();
-                        return;
-                    }
-
                     if (player.getGameMode() != GameMode.SPECTATOR) {
                         player.setGameMode(GameMode.SPECTATOR);
                     }
@@ -300,60 +260,60 @@ public class PlayManager {
                         player.setSpectatorTarget(camera);
                     }
 
-                    ResolvedClip clip = clips.get(clipIndex);
-                    tickClip(clip);
+                    tickPlayback();
                 }
             };
             task.runTaskTimer(instance, 0L, 1L);
         }
 
-        private void tickClip(ResolvedClip clip) {
-            boolean lastTickOfClip = clipTick >= clip.durationTicks();
-            double progress = clip.durationTicks() <= 0 ? 1.0D : (double) clipTick / clip.durationTicks();
+        private void tickPlayback() {
+            int segmentCount = frames.size() - 1;
+            int durationTicks = getDurationTicks(segmentCount);
+            boolean finalTick = tick >= durationTicks;
+            double progress = durationTicks <= 0 ? 1.0D : (double) tick / durationTicks;
             progress = Math.max(0.0D, Math.min(1.0D, progress));
             double eased = ease(progress);
 
-            int segmentCount = clip.frames().size() - 1;
             double exactSegment = eased * segmentCount;
             int segmentIndex = Math.min((int) exactSegment, segmentCount - 1);
             double localT = exactSegment - segmentIndex;
-            if (lastTickOfClip) {
+            if (finalTick) {
                 segmentIndex = segmentCount - 1;
                 localT = 1.0D;
             }
 
-            dispatchPassedFrames(clip, lastTickOfClip ? clip.frames().size() - 1 : segmentIndex + 1);
-            moveCamera(clip, segmentIndex, localT, eased);
+            dispatchPassedFrames(finalTick ? frames.size() - 1 : segmentIndex + 1);
+            moveCamera(segmentIndex, localT);
             applyZoom(eased);
 
-            if (lastTickOfClip) {
-                clipIndex++;
-                clipTick = 0;
-                if (clipIndex >= clips.size()) {
-                    stop(false, null);
-                    if (task != null) {
-                        task.cancel();
-                    }
-                    return;
+            if (finalTick) {
+                stop(false, null);
+                if (task != null) {
+                    task.cancel();
                 }
-                applyTransition(clips.get(clipIndex).transition());
                 return;
             }
 
-            clipTick++;
+            tick++;
         }
 
-        private void dispatchPassedFrames(ResolvedClip clip, int currentFrame) {
-            while (lastDispatchedFrame[clipIndex] < currentFrame) {
-                lastDispatchedFrame[clipIndex]++;
-                if (lastDispatchedFrame[clipIndex] >= 0 && lastDispatchedFrame[clipIndex] < clip.frames().size()) {
-                    dispatchFrame(player, clip.frames().get(lastDispatchedFrame[clipIndex]));
+        private int getDurationTicks(int segmentCount) {
+            if (cinematic.getDuration() > 0) {
+                return cinematic.getDuration() * 20;
+            }
+            return Math.max(1, segmentCount * instance.getInterpolationSteps());
+        }
+
+        private void dispatchPassedFrames(int currentFrame) {
+            while (lastDispatchedFrame < currentFrame) {
+                lastDispatchedFrame++;
+                if (lastDispatchedFrame >= 0 && lastDispatchedFrame < frames.size()) {
+                    dispatchFrame(player, frames.get(lastDispatchedFrame));
                 }
             }
         }
 
-        private void moveCamera(ResolvedClip clip, int segmentIndex, double localT, double eased) {
-            List<Frame> frames = clip.frames();
+        private void moveCamera(int segmentIndex, double localT) {
             Frame f1 = frames.get(segmentIndex);
             Frame f2 = frames.get(segmentIndex + 1);
             Frame f0 = segmentIndex > 0 ? frames.get(segmentIndex - 1) : f1;
@@ -370,7 +330,7 @@ public class PlayManager {
 
             float yaw;
             float pitch;
-            if (cinematic.hasFocus() && cinematic.getFocusWorld() != null && cinematic.getFocusWorld().equals(world.getName())) {
+            if (cinematic.hasFocus()) {
                 Vector direction = new Vector(cinematic.getFocusX() - x, cinematic.getFocusY() - y, cinematic.getFocusZ() - z);
                 Location look = new Location(world, x, y, z);
                 if (direction.lengthSquared() > 0.0001D) {
@@ -384,7 +344,6 @@ public class PlayManager {
                 float yaw2 = unwrapAngle(f1.getYaw(), f2.getYaw());
                 float yaw3 = unwrapAngle(yaw2, f3.getYaw());
                 yaw = (float) catmullRom(yaw0, yaw1, yaw2, yaw3, localT);
-
                 pitch = (float) catmullRom(f0.getPitch(), f1.getPitch(), f2.getPitch(), f3.getPitch(), localT);
             }
 
@@ -421,20 +380,6 @@ public class PlayManager {
                 player.removePotionEffect(PotionEffectType.SLOWNESS);
                 player.removePotionEffect(PotionEffectType.SPEED);
             }
-        }
-
-        private void applyTransition(TransitionMetadata transition) {
-            if (transition.getEffect() != TransitionEffect.DARKEN_FADE || transition.getDurationTicks() <= 0) {
-                return;
-            }
-            player.addPotionEffect(new PotionEffect(
-                    PotionEffectType.DARKNESS,
-                    transition.getDurationTicks(),
-                    Math.max(0, transition.getStrength() - 1),
-                    false,
-                    false,
-                    false
-            ));
         }
 
         private void stop(boolean forced, CommandSender stopSource) {
@@ -488,13 +433,5 @@ public class PlayManager {
                 instance.getMessageManager().send(source, "play.finished");
             }
         }
-    }
-
-    private record ResolvedClip(
-            CinematicTrack track,
-            TransitionMetadata transition,
-            int durationTicks,
-            List<Frame> frames
-    ) {
     }
 }

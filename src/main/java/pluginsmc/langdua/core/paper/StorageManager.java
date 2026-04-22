@@ -2,12 +2,15 @@ package pluginsmc.langdua.core.paper;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
-import pluginsmc.langdua.core.paper.objects.CinematicTrack;
 import pluginsmc.langdua.core.paper.objects.Frame;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class StorageManager {
     private final Core instance;
@@ -16,14 +19,13 @@ public class StorageManager {
     public StorageManager(Core instance) {
         this.instance = instance;
         this.folder = new File(instance.getDataFolder(), "cinematics");
-        if (!folder.exists()) folder.mkdirs();
-    }
-    private double asDouble(Object o) {
-        return (o instanceof Number) ? ((Number) o).doubleValue() : 0.0;
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
     }
 
-    private int asInt(Object o) {
-        return (o instanceof Number) ? ((Number) o).intValue() : 0;
+    private double asDouble(Object value) {
+        return value instanceof Number number ? number.doubleValue() : 0.0;
     }
 
     private Frame deserializeFrame(Map<?, ?> map) {
@@ -62,54 +64,63 @@ public class StorageManager {
     }
 
     public void save(Map<String, Cinematic> cinematics) {
-        for (Cinematic cine : cinematics.values()) {
-            cine.ensureStructure();
-            File file = new File(folder, cine.getName() + ".yml");
+        for (Cinematic cinematic : cinematics.values()) {
+            cinematic.ensureStructure();
+            File file = new File(folder, cinematic.getName() + ".yml");
             YamlConfiguration config = new YamlConfiguration();
-            config.set("name", cine.getName());
-            config.set("bgm", cine.getBgmSound());
-            config.set("shake", cine.getShakeIntensity());
-            config.set("zoom.start", cine.getStartZoom());
-            config.set("zoom.end", cine.getEndZoom());
-            config.set("duration", cine.getDuration());
-            if (cine.hasFocus()) {
-                config.set("focus.world", cine.getFocusWorld());
-                config.set("focus.x", cine.getFocusX());
-                config.set("focus.y", cine.getFocusY());
-                config.set("focus.z", cine.getFocusZ());
+            config.set("name", cinematic.getName());
+            config.set("bgm", cinematic.getBgmSound());
+            config.set("shake", cinematic.getShakeIntensity());
+            config.set("zoom.start", cinematic.getStartZoom());
+            config.set("zoom.end", cinematic.getEndZoom());
+            config.set("duration", cinematic.getDuration());
+            if (cinematic.hasFocus()) {
+                config.set("focus.world", cinematic.getFocusWorld());
+                config.set("focus.x", cinematic.getFocusX());
+                config.set("focus.y", cinematic.getFocusY());
+                config.set("focus.z", cinematic.getFocusZ());
             }
 
-            List<Map<String, Object>> legacyFrames = new ArrayList<>();
-            for (Frame frame : cine.getFrames()) {
-                legacyFrames.add(serializeFrame(frame));
+            List<Map<String, Object>> frames = new ArrayList<>();
+            for (Frame frame : cinematic.getFrames()) {
+                frames.add(serializeFrame(frame));
             }
-            config.set("frames", legacyFrames);
-            try { config.save(file); } catch (IOException e) { e.printStackTrace(); }
+            config.set("frames", frames);
+
+            try {
+                config.save(file);
+            } catch (IOException e) {
+                instance.getLogger().severe("Failed to save cinematic file '" + file.getName() + "'.");
+                e.printStackTrace();
+            }
         }
     }
 
     public Map<String, Cinematic> load() {
         Map<String, Cinematic> cinematics = new HashMap<>();
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (files == null) return cinematics;
+        if (files == null) {
+            return cinematics;
+        }
 
         for (File file : files) {
             try {
-                // BỌC TRY-CATCH CHỐNG SẬP
                 YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
                 String name = config.getString("name");
-                if (name == null) continue;
+                if (name == null || name.isBlank()) {
+                    continue;
+                }
 
-                Cinematic cine = new Cinematic(name);
-                cine.setBgmSound(config.getString("bgm"));
-                cine.setShakeIntensity(config.getDouble("shake"));
-                cine.setStartZoom(config.getInt("zoom.start", 0));
-                cine.setEndZoom(config.getInt("zoom.end", 0));
-                cine.setDuration(config.getInt("duration", 0));
+                Cinematic cinematic = new Cinematic(name);
+                cinematic.setBgmSound(config.getString("bgm"));
+                cinematic.setShakeIntensity(config.getDouble("shake"));
+                cinematic.setStartZoom(config.getInt("zoom.start", 0));
+                cinematic.setEndZoom(config.getInt("zoom.end", 0));
+                cinematic.setDuration(config.getInt("duration", 0));
                 if (config.isConfigurationSection("focus")) {
                     String world = config.getString("focus.world");
                     if (world != null) {
-                        cine.setFocus(
+                        cinematic.setFocus(
                                 world,
                                 config.getDouble("focus.x"),
                                 config.getDouble("focus.y"),
@@ -118,38 +129,55 @@ public class StorageManager {
                     }
                 }
 
-                List<Map<?, ?>> trackMaps = config.getMapList("tracks");
-                if (!trackMaps.isEmpty()) {
-                    cine.getTracks().clear();
-                    for (Map<?, ?> trackMap : trackMaps) {
-                        String trackId = (String) trackMap.get("id");
-                        if (trackId == null || trackId.isBlank()) {
-                            continue;
-                        }
-                        CinematicTrack track = new CinematicTrack(trackId);
-                        track.setDurationTicks(asInt(trackMap.get("durationTicks")));
-                        List<Map<?, ?>> frameMaps = (List<Map<?, ?>>) trackMap.get("frames");
-                        if (frameMaps != null) {
-                            for (Map<?, ?> frameMap : frameMaps) {
-                                track.getFrames().add(deserializeFrame(frameMap));
-                            }
-                        }
-                        cine.getTracks().put(trackId, track);
-                    }
-                } else {
-                    List<Map<?, ?>> frameMaps = config.getMapList("frames");
-                    for (Map<?, ?> map : frameMaps) {
-                        cine.getFrames().add(deserializeFrame(map));
-                    }
+                List<Map<?, ?>> frameMaps = config.getMapList("frames");
+                if (frameMaps.isEmpty()) {
+                    frameMaps = readLegacyTrackFrames(config.getMapList("tracks"));
+                }
+                for (Map<?, ?> map : frameMaps) {
+                    cinematic.getFrames().add(deserializeFrame(map));
                 }
 
-                cine.ensureStructure();
-                cinematics.put(name, cine);
+                cinematic.ensureStructure();
+                cinematics.put(name, cinematic);
             } catch (Throwable t) {
                 instance.getLogger().severe("Failed to load cinematic file '" + file.getName() + "'. Skipping it so the plugin can continue enabling.");
                 t.printStackTrace();
             }
         }
         return cinematics;
+    }
+
+    public boolean delete(String name) {
+        File file = new File(folder, name + ".yml");
+        return !file.exists() || file.delete();
+    }
+
+    private List<Map<?, ?>> readLegacyTrackFrames(List<Map<?, ?>> trackMaps) {
+        if (trackMaps == null || trackMaps.isEmpty()) {
+            return List.of();
+        }
+
+        Map<?, ?> selected = null;
+        for (Map<?, ?> trackMap : trackMaps) {
+            if ("main".equals(trackMap.get("id"))) {
+                selected = trackMap;
+                break;
+            }
+        }
+        if (selected == null) {
+            selected = trackMaps.getFirst();
+        }
+
+        Object frames = selected.get("frames");
+        if (frames instanceof List<?> list) {
+            List<Map<?, ?>> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    result.add(map);
+                }
+            }
+            return result;
+        }
+        return List.of();
     }
 }

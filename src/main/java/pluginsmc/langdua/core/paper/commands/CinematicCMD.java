@@ -1,6 +1,8 @@
 package pluginsmc.langdua.core.paper.commands;
 
 import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.ArgumentSuggestions;
+import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.DoubleArgument;
 import dev.jorel.commandapi.arguments.EntitySelectorArgument;
 import dev.jorel.commandapi.arguments.GreedyStringArgument;
@@ -19,13 +21,15 @@ import pluginsmc.langdua.core.paper.Core;
 import pluginsmc.langdua.core.paper.MessageManager;
 import pluginsmc.langdua.core.paper.guis.CinematicGUI;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
-import pluginsmc.langdua.core.paper.objects.TimelineClip;
-import pluginsmc.langdua.core.paper.objects.TransitionEffect;
-import pluginsmc.langdua.core.paper.objects.TransitionMetadata;
 import pluginsmc.langdua.core.paper.objects.Frame;
+
+import java.util.Collection;
+import java.util.TreeSet;
+import java.util.function.Supplier;
 
 public class CinematicCMD {
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+
     private final Core instance;
     private final MessageManager msg;
 
@@ -47,13 +51,7 @@ public class CinematicCMD {
         registerRec();
         registerRecordStart();
         registerRecordStop();
-        registerTrackCreate();
         registerAddFrame();
-        registerAddFrameToTrack();
-        registerTimelineAppend();
-        registerTimelineReset();
-        registerTransitionDarken();
-        registerTransitionClear();
         registerAddCommand();
         registerTitle();
         registerSubtitle();
@@ -84,9 +82,8 @@ public class CinematicCMD {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("edit"))
                 .withPermission("cinematic.cmd")
-                .executesPlayer((player, args) -> {
-                    player.openInventory(new CinematicGUI(instance).getCinematicListGUI(player));
-                })
+                .executesPlayer((dev.jorel.commandapi.executors.PlayerCommandExecutor) (player, args) ->
+                        player.openInventory(new CinematicGUI(instance).getCinematicListGUI(player)))
                 .register();
     }
 
@@ -96,9 +93,7 @@ public class CinematicCMD {
                 .withPermission("cinematic.cmd")
                 .executes((sender, args) -> {
                     msg.send(sender, "list.header");
-                    instance.getGame().getCinematics().keySet().forEach(name ->
-                            msg.send(sender, "list.item", "name", name)
-                    );
+                    instance.getGame().getCinematics().keySet().stream().sorted().forEach(name -> msg.send(sender, "list.item", "name", name));
                 })
                 .register();
     }
@@ -118,13 +113,13 @@ public class CinematicCMD {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("play"))
                 .withArguments(new EntitySelectorArgument.OnePlayer("player"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withPermission("cinematic.cmd")
-                .executes((sender, args) -> {
-                    Player target = (Player) args.get("player");
-                    String name = (String) args.get("name");
-                    instance.getGame().getPlayManager().play(sender, target, name);
-                })
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) -> instance.getGame().getPlayManager().play(
+                        sender,
+                        (Player) args.get("player"),
+                        (String) args.get("name")
+                ))
                 .register();
     }
 
@@ -133,17 +128,15 @@ public class CinematicCMD {
                 .withArguments(new LiteralArgument("stop"))
                 .withArguments(new EntitySelectorArgument.OnePlayer("player"))
                 .withPermission("cinematic.cmd")
-                .executes((sender, args) -> {
-                    Player target = (Player) args.get("player");
-                    instance.getGame().getPlayManager().forceStop(sender, target);
-                })
+                .executes((dev.jorel.commandapi.executors.CommandExecutor) (sender, args) ->
+                        instance.getGame().getPlayManager().forceStop(sender, (Player) args.get("player")))
                 .register();
     }
 
     private void registerPath() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("path"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withPermission("cinematic.cmd")
                 .executesPlayer((player, args) -> {
                     Cinematic cinematic = requireCinematic(player, (String) args.get("name"));
@@ -163,10 +156,9 @@ public class CinematicCMD {
                             }
                             for (Frame frame : cinematic.getFrames()) {
                                 World world = Bukkit.getWorld(frame.getWorld());
-                                if (world == null) {
-                                    continue;
+                                if (world != null) {
+                                    world.spawnParticle(Particle.FLAME, frame.getX(), frame.getY(), frame.getZ(), 1, 0, 0, 0, 0);
                                 }
-                                world.spawnParticle(Particle.FLAME, frame.getX(), frame.getY(), frame.getZ(), 1, 0, 0, 0, 0);
                             }
                             ticks += 20;
                         }
@@ -178,11 +170,12 @@ public class CinematicCMD {
     private void registerDelete() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("delete"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withPermission("cinematic.cmd")
                 .executes((sender, args) -> {
                     String name = (String) args.get("name");
                     if (instance.getGame().getCinematics().remove(name) != null) {
+                        instance.getStorageManager().delete(name);
                         instance.getStorageManager().save(instance.getGame().getCinematics());
                         msg.send(sender, "edit.delete", "name", name);
                     } else {
@@ -219,24 +212,8 @@ public class CinematicCMD {
                 .withArguments(new LiteralArgument("start"))
                 .withArguments(new StringArgument("name"))
                 .withPermission("cinematic.cmd")
-                .executesPlayer((player, args) -> {
-                    instance.getGame().getRecordManager().startFreeRecord(player, (String) args.get("name"));
-                })
-                .register();
-
-        new CommandAPICommand("cinematic")
-                .withArguments(new LiteralArgument("record"))
-                .withArguments(new LiteralArgument("start"))
-                .withArguments(new StringArgument("name"))
-                .withArguments(new StringArgument("track"))
-                .withPermission("cinematic.cmd")
-                .executesPlayer((player, args) -> {
-                    instance.getGame().getRecordManager().startFreeRecord(
-                            player,
-                            (String) args.get("name"),
-                            (String) args.get("track")
-                    );
-                })
+                .executesPlayer((dev.jorel.commandapi.executors.PlayerCommandExecutor) (player, args) ->
+                        instance.getGame().getRecordManager().startFreeRecord(player, (String) args.get("name")))
                 .register();
     }
 
@@ -245,34 +222,15 @@ public class CinematicCMD {
                 .withArguments(new LiteralArgument("record"))
                 .withArguments(new LiteralArgument("stop"))
                 .withPermission("cinematic.cmd")
-                .executesPlayer((player, args) -> {
-                    instance.getGame().getRecordManager().stopFreeRecord(player);
-                })
-                .register();
-    }
-
-    private void registerTrackCreate() {
-        new CommandAPICommand("cinematic")
-                .withArguments(new LiteralArgument("track"))
-                .withArguments(new LiteralArgument("create"))
-                .withArguments(new StringArgument("name"))
-                .withArguments(new StringArgument("track"))
-                .withPermission("cinematic.cmd")
-                .executes((sender, args) -> {
-                    String name = (String) args.get("name");
-                    String trackId = (String) args.get("track");
-                    Cinematic cinematic = instance.getGame().getCinematics().computeIfAbsent(name, Cinematic::new);
-                    cinematic.getOrCreateTrack(trackId);
-                    instance.getStorageManager().save(instance.getGame().getCinematics());
-                    msg.send(sender, "edit.generic-updated");
-                })
+                .executesPlayer((dev.jorel.commandapi.executors.PlayerCommandExecutor) (player, args) ->
+                        instance.getGame().getRecordManager().stopFreeRecord(player))
                 .register();
     }
 
     private void registerAddFrame() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("addframe"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withPermission("cinematic.cmd")
                 .executesPlayer((player, args) -> {
                     String name = (String) args.get("name");
@@ -292,131 +250,10 @@ public class CinematicCMD {
                 .register();
     }
 
-    private void registerAddFrameToTrack() {
-        new CommandAPICommand("cinematic")
-                .withArguments(new LiteralArgument("addframe"))
-                .withArguments(new StringArgument("name"))
-                .withArguments(new StringArgument("track"))
-                .withPermission("cinematic.cmd")
-                .executesPlayer((player, args) -> {
-                    String name = (String) args.get("name");
-                    String trackId = (String) args.get("track");
-                    Cinematic cinematic = instance.getGame().getCinematics().computeIfAbsent(name, Cinematic::new);
-                    Location location = player.getLocation();
-                    cinematic.getOrCreateTrack(trackId).getFrames().add(new Frame(
-                            location.getWorld().getName(),
-                            location.getX(),
-                            location.getY(),
-                            location.getZ(),
-                            location.getYaw(),
-                            location.getPitch()
-                    ));
-                    instance.getStorageManager().save(instance.getGame().getCinematics());
-                    msg.send(player, "edit.generic-updated");
-                })
-                .register();
-    }
-
-    private void registerTimelineAppend() {
-        new CommandAPICommand("cinematic")
-                .withArguments(new LiteralArgument("timeline"))
-                .withArguments(new LiteralArgument("append"))
-                .withArguments(new StringArgument("name"))
-                .withArguments(new StringArgument("track"))
-                .withPermission("cinematic.cmd")
-                .executes((sender, args) -> {
-                    Cinematic cinematic = requireCinematic(sender, (String) args.get("name"));
-                    if (cinematic == null) {
-                        return;
-                    }
-                    String trackId = (String) args.get("track");
-                    if (!cinematic.getTracks().containsKey(trackId)) {
-                        msg.send(sender, "error.not-exist", "name", trackId);
-                        return;
-                    }
-                    cinematic.getTimeline().add(new TimelineClip(trackId));
-                    instance.getStorageManager().save(instance.getGame().getCinematics());
-                    msg.send(sender, "edit.generic-updated");
-                })
-                .register();
-    }
-
-    private void registerTimelineReset() {
-        new CommandAPICommand("cinematic")
-                .withArguments(new LiteralArgument("timeline"))
-                .withArguments(new LiteralArgument("reset"))
-                .withArguments(new StringArgument("name"))
-                .withPermission("cinematic.cmd")
-                .executes((sender, args) -> {
-                    Cinematic cinematic = requireCinematic(sender, (String) args.get("name"));
-                    if (cinematic == null) {
-                        return;
-                    }
-                    cinematic.getTimeline().clear();
-                    cinematic.getTimeline().add(new TimelineClip(Cinematic.DEFAULT_TRACK_ID));
-                    instance.getStorageManager().save(instance.getGame().getCinematics());
-                    msg.send(sender, "edit.generic-updated");
-                })
-                .register();
-    }
-
-    private void registerTransitionDarken() {
-        new CommandAPICommand("cinematic")
-                .withArguments(new LiteralArgument("transition"))
-                .withArguments(new LiteralArgument("darken"))
-                .withArguments(new StringArgument("name"))
-                .withArguments(new IntegerArgument("clip", 0))
-                .withArguments(new IntegerArgument("ticks", 1))
-                .withArguments(new IntegerArgument("strength", 1))
-                .withPermission("cinematic.cmd")
-                .executes((sender, args) -> {
-                    Cinematic cinematic = requireCinematic(sender, (String) args.get("name"));
-                    if (cinematic == null) {
-                        return;
-                    }
-                    int clipIndex = (int) args.get("clip");
-                    if (clipIndex < 0 || clipIndex >= cinematic.getTimeline().size()) {
-                        msg.send(sender, "error.invalid-number");
-                        return;
-                    }
-                    TransitionMetadata transition = cinematic.getTimeline().get(clipIndex).getTransition();
-                    transition.setEffect(TransitionEffect.DARKEN_FADE);
-                    transition.setDurationTicks((int) args.get("ticks"));
-                    transition.setStrength((int) args.get("strength"));
-                    instance.getStorageManager().save(instance.getGame().getCinematics());
-                    msg.send(sender, "edit.generic-updated");
-                })
-                .register();
-    }
-
-    private void registerTransitionClear() {
-        new CommandAPICommand("cinematic")
-                .withArguments(new LiteralArgument("transition"))
-                .withArguments(new LiteralArgument("clear"))
-                .withArguments(new StringArgument("name"))
-                .withArguments(new IntegerArgument("clip", 0))
-                .withPermission("cinematic.cmd")
-                .executes((sender, args) -> {
-                    Cinematic cinematic = requireCinematic(sender, (String) args.get("name"));
-                    if (cinematic == null) {
-                        return;
-                    }
-                    int clipIndex = (int) args.get("clip");
-                    if (clipIndex < 0 || clipIndex >= cinematic.getTimeline().size()) {
-                        msg.send(sender, "error.invalid-number");
-                        return;
-                    }
-                    cinematic.getTimeline().get(clipIndex).setTransition(new TransitionMetadata());
-                    instance.getStorageManager().save(instance.getGame().getCinematics());
-                    msg.send(sender, "edit.generic-updated");
-                })
-                .register();
-    }
-
     private void registerAddCommand() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("addcmd"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new IntegerArgument("frame", 0))
                 .withArguments(new GreedyStringArgument("command"))
                 .withPermission("cinematic.cmd")
@@ -440,7 +277,7 @@ public class CinematicCMD {
     private void registerTitle() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("title"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new IntegerArgument("frame", 0))
                 .withArguments(new GreedyStringArgument("text"))
                 .withPermission("cinematic.cmd")
@@ -463,7 +300,7 @@ public class CinematicCMD {
     private void registerSubtitle() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("subtitle"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new IntegerArgument("frame", 0))
                 .withArguments(new GreedyStringArgument("text"))
                 .withPermission("cinematic.cmd")
@@ -486,7 +323,7 @@ public class CinematicCMD {
     private void registerDuration() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("duration"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new IntegerArgument("seconds", 0))
                 .withPermission("cinematic.cmd")
                 .executes((sender, args) -> {
@@ -494,9 +331,7 @@ public class CinematicCMD {
                     if (cinematic == null) {
                         return;
                     }
-                    int seconds = (int) args.get("seconds");
-                    cinematic.setDuration(seconds);
-                    cinematic.getPrimaryTrack().setDurationTicks(seconds * 20);
+                    cinematic.setDuration((int) args.get("seconds"));
                     instance.getStorageManager().save(instance.getGame().getCinematics());
                     msg.send(sender, "edit.generic-updated");
                 })
@@ -506,7 +341,7 @@ public class CinematicCMD {
     private void registerFocusSet() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("focus"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new LiteralArgument("set"))
                 .withPermission("cinematic.cmd")
                 .executesPlayer((player, args) -> {
@@ -525,7 +360,7 @@ public class CinematicCMD {
     private void registerFocusClear() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("focus"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new LiteralArgument("clear"))
                 .withPermission("cinematic.cmd")
                 .executes((sender, args) -> {
@@ -543,7 +378,7 @@ public class CinematicCMD {
     private void registerShake() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("shake"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new DoubleArgument("intensity", 0.0D))
                 .withPermission("cinematic.cmd")
                 .executes((sender, args) -> {
@@ -561,7 +396,7 @@ public class CinematicCMD {
     private void registerZoom() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("zoom"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new IntegerArgument("start"))
                 .withArguments(new IntegerArgument("end"))
                 .withPermission("cinematic.cmd")
@@ -581,7 +416,7 @@ public class CinematicCMD {
     private void registerBgm() {
         new CommandAPICommand("cinematic")
                 .withArguments(new LiteralArgument("bgm"))
-                .withArguments(new StringArgument("name"))
+                .withArguments(namedCinematicArg("name"))
                 .withArguments(new StringArgument("sound"))
                 .withPermission("cinematic.cmd")
                 .executes((sender, args) -> {
@@ -595,6 +430,14 @@ public class CinematicCMD {
                     msg.send(sender, "edit.generic-updated");
                 })
                 .register();
+    }
+
+    private Argument<String> namedCinematicArg(String nodeName) {
+        return namedArg(nodeName, () -> instance.getGame().getCinematics().keySet());
+    }
+
+    private Argument<String> namedArg(String nodeName, Supplier<Collection<String>> values) {
+        return new StringArgument(nodeName).replaceSuggestions(ArgumentSuggestions.stringCollection(info -> new TreeSet<>(values.get())));
     }
 
     private Cinematic requireCinematic(CommandSender sender, String name) {
@@ -624,15 +467,8 @@ public class CinematicCMD {
         sendHelpLine(sender, "help.delete");
         sendHelpLine(sender, "help.rec");
         sendHelpLine(sender, "help.record-start");
-        sendHelpLine(sender, "help.record-start-track");
         sendHelpLine(sender, "help.record-stop");
-        sendHelpLine(sender, "help.track-create");
         sendHelpLine(sender, "help.addframe");
-        sendHelpLine(sender, "help.addframe-track");
-        sendHelpLine(sender, "help.timeline-append");
-        sendHelpLine(sender, "help.timeline-reset");
-        sendHelpLine(sender, "help.transition-darken");
-        sendHelpLine(sender, "help.transition-clear");
         sendHelpLine(sender, "help.addcmd");
         sendHelpLine(sender, "help.title");
         sendHelpLine(sender, "help.subtitle");

@@ -21,14 +21,10 @@ public class CinematicFrameGUI {
     }
 
     public Inventory getCinematicFrameGUI(Player player, Cinematic cinematic, int page) {
-        return getCinematicFrameGUI(player, cinematic, Cinematic.DEFAULT_TRACK_ID, page);
-    }
-
-    public Inventory getCinematicFrameGUI(Player player, Cinematic cinematic, String trackId, int page) {
-        Inventory inv = Bukkit.createInventory(null, 54, "Frames: " + cinematic.getName() + " - T" + trackId + " - P" + page);
+        Inventory inv = Bukkit.createInventory(null, 54, "Frames: " + cinematic.getName() + " - P" + page);
 
         int maxFramesPerPage = 45;
-        List<pluginsmc.langdua.core.paper.objects.Frame> frames = cinematic.getOrCreateTrack(trackId).getFrames();
+        List<pluginsmc.langdua.core.paper.objects.Frame> frames = cinematic.getFrames();
         int totalFrames = frames.size();
         int startIndex = (page - 1) * maxFramesPerPage;
         int endIndex = Math.min(startIndex + maxFramesPerPage, totalFrames);
@@ -39,7 +35,6 @@ public class CinematicFrameGUI {
             if (meta != null) {
                 meta.setDisplayName(ChatColor.YELLOW + "Frame " + i);
                 List<String> lore = new ArrayList<>();
-                lore.add(ChatColor.GRAY + "Track: " + ChatColor.WHITE + trackId);
                 lore.add(ChatColor.GRAY + "Commands: " + frames.get(i).getCommands().size());
 
                 String title = frames.get(i).getTitle();
@@ -64,7 +59,6 @@ public class CinematicFrameGUI {
 
         inv.setItem(49, createControlItem(Material.OAK_DOOR, ChatColor.RED + "Back", ChatColor.GRAY + "Return to Dashboard"));
         inv.setItem(48, createControlItem(Material.ENDER_EYE, ChatColor.LIGHT_PURPLE + "Visualize Path", ChatColor.GRAY + "Show path with particles"));
-        inv.setItem(50, createControlItem(Material.REPEATER, ChatColor.AQUA + "Back To Tracks", ChatColor.GRAY + "Return to track manager"));
 
         return inv;
     }

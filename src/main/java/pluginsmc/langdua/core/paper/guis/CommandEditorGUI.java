@@ -21,12 +21,8 @@ public class CommandEditorGUI {
     }
 
     public Inventory getCommandEditorGUI(Cinematic cinematic, int page, int frameIndex) {
-        return getCommandEditorGUI(cinematic, Cinematic.DEFAULT_TRACK_ID, page, frameIndex);
-    }
-
-    public Inventory getCommandEditorGUI(Cinematic cinematic, String trackId, int page, int frameIndex) {
-        Inventory inv = Bukkit.createInventory(null, 54, "Cmds: " + cinematic.getName() + " - T" + trackId + " - F" + frameIndex + " - P" + page);
-        Frame frame = cinematic.getOrCreateTrack(trackId).getFrames().get(frameIndex);
+        Inventory inv = Bukkit.createInventory(null, 54, "Cmds: " + cinematic.getName() + " - F" + frameIndex + " - P" + page);
+        Frame frame = cinematic.getFrames().get(frameIndex);
         for (int i = 0; i < frame.getCommands().size(); i++) {
             if (i >= 45) break;
             ItemStack item = new ItemStack(Material.COMMAND_BLOCK);
@@ -56,8 +52,6 @@ public class CommandEditorGUI {
                 ChatColor.GRAY + "VD: entity.ender_dragon.growl"));
 
         inv.setItem(45, createInfoItem(Material.ARROW, ChatColor.RED + "Quay lại"));
-        inv.setItem(46, createInfoItem(Material.FILLED_MAP, ChatColor.YELLOW + "Track: " + trackId,
-                ChatColor.GRAY + "Editing commands on selected track frame"));
 
         return inv;
     }
