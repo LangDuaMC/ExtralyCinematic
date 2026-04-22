@@ -11,28 +11,21 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import pluginsmc.langdua.core.paper.Core;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
-import pluginsmc.langdua.core.paper.objects.CinematicTrack;
-import pluginsmc.langdua.core.paper.objects.Frame;
+import pluginsmc.langdua.core.paper.objects.TimelineClip;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class CommandEditorGUI implements InventoryHolder {
+public class CinematicTimelineGUI implements InventoryHolder {
 
     private final Core instance;
     private final Cinematic cinematic;
-    private final CinematicTrack track;
-    private final Frame frame;
-    private final int frameIndex;
     private final Inventory inventory;
 
-    public CommandEditorGUI(Core instance, Cinematic cinematic, CinematicTrack track, Frame frame, int frameIndex) {
+    public CinematicTimelineGUI(Core instance, Cinematic cinematic) {
         this.instance = instance;
         this.cinematic = cinematic;
-        this.track = track;
-        this.frame = frame;
-        this.frameIndex = frameIndex;
-        this.inventory = Bukkit.createInventory(this, 54, MiniMessage.miniMessage().deserialize("<light_purple>Commands: Frame #" + frameIndex));
+        this.inventory = Bukkit.createInventory(this, 54, MiniMessage.miniMessage().deserialize("<yellow>Timeline: <gold>" + cinematic.getName()));
         setup();
     }
 
@@ -40,14 +33,16 @@ public class CommandEditorGUI implements InventoryHolder {
         inventory.clear();
         int slot = 0;
 
-        for (String cmd : frame.getCommands()) {
+        for (TimelineClip clip : cinematic.getTimeline()) {
             if (slot >= 45) break;
 
-            ItemStack item = new ItemStack(Material.COMMAND_BLOCK);
+            ItemStack item = new ItemStack(Material.REPEATER);
             ItemMeta meta = item.getItemMeta();
-            meta.displayName(MiniMessage.miniMessage().deserialize("<white>/" + cmd));
+            meta.displayName(MiniMessage.miniMessage().deserialize("<yellow>Clip: <white>" + clip.getTrackId()));
 
             List<net.kyori.adventure.text.Component> lore = new ArrayList<>();
+            lore.add(MiniMessage.miniMessage().deserialize("<gray>Transition: " + clip.getTransition().getEffect().name()));
+            lore.add(MiniMessage.miniMessage().deserialize("<gray>Duration: " + clip.getTransition().getDurationTicks() + " ticks"));
             lore.add(MiniMessage.miniMessage().deserialize(""));
             lore.add(MiniMessage.miniMessage().deserialize("<red>Shift-Right Click to Delete"));
             meta.lore(lore);
@@ -58,13 +53,13 @@ public class CommandEditorGUI implements InventoryHolder {
 
         ItemStack addItem = new ItemStack(Material.EMERALD_BLOCK);
         ItemMeta addMeta = addItem.getItemMeta();
-        addMeta.displayName(MiniMessage.miniMessage().deserialize("<green><bold>+ Add Command"));
+        addMeta.displayName(MiniMessage.miniMessage().deserialize("<green><bold>+ Add Clip"));
         addItem.setItemMeta(addMeta);
         inventory.setItem(49, addItem);
 
         ItemStack backItem = new ItemStack(Material.BARRIER);
         ItemMeta backMeta = backItem.getItemMeta();
-        backMeta.displayName(MiniMessage.miniMessage().deserialize("<red>Back to Frames"));
+        backMeta.displayName(MiniMessage.miniMessage().deserialize("<red>Back to Cinematic"));
         backItem.setItemMeta(backMeta);
         inventory.setItem(45, backItem);
     }
@@ -75,24 +70,24 @@ public class CommandEditorGUI implements InventoryHolder {
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
         if (clicked.getType() == Material.BARRIER) {
-            player.openInventory(new CinematicFrameGUI(instance, cinematic, track).getInventory());
+            player.openInventory(new CinematicGUI(instance, cinematic).getInventory());
             return;
         }
 
-        if (clicked.getType() == Material.COMMAND_BLOCK) {
+        if (clicked.getType() == Material.REPEATER) {
             if (event.isShiftClick() && event.isRightClick()) {
                 int index = event.getSlot();
-                if (index >= 0 && index < frame.getCommands().size()) {
-                    frame.getCommands().remove(index);
+                if (index >= 0 && index < cinematic.getTimeline().size()) {
+                    cinematic.getTimeline().remove(index);
                     setup(); // Load lại GUI ngay lập tức sau khi xóa
-                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>Command removed!"));
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>Clip removed!"));
                 }
             }
         }
 
         if (clicked.getType() == Material.EMERALD_BLOCK) {
             player.closeInventory();
-            player.sendMessage(MiniMessage.miniMessage().deserialize("<green>Type the command in chat (without /):"));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<green>Enter track name for new clip in chat:"));
             // (Chỗ này sau này bro có thể nối với ChatInputManager)
         }
     }

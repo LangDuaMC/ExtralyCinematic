@@ -1,176 +1,128 @@
-# 🎥 ExtralyCinematic
+# 🎬 ExtralyCinematic v2.5
 
-*A lightweight, high-performance, and feature-rich cinematic plugin for Minecraft (Paper/Bukkit) servers.*
+The ultimate, ultra-lightweight cinematic and cutscene plugin for Paper 1.21.11+. Create breathtaking camera movements, visual effects, and synchronized actions with zero NMS hassle.
 
-[**🇻🇳 Xem phiên bản Tiếng Việt ở bên dưới (Scroll down for Vietnamese version)**](#phiên-bản-tiếng-việt-vietnamese-version)
+[🇻🇳 Bấm vào đây để xem hướng dẫn Tiếng Việt](#-extralycinematic-v25-vietnamese)
 
 ---
 
-## 🇬🇧 ENGLISH VERSION
+## 🚀 Features (v2.5 The Optimization Update)
+* **Pure Bukkit API:** Completely removed `CommandAPI` and NMS dependencies. The plugin is now incredibly lightweight (~50KB), future-proof, and immune to version-update crashes.
+* **Bulletproof GUI 2.0:** Upgraded to the `InventoryHolder` standard, preventing all click-glitches and UI bugs.
+* **Deep GUI Editor:** Manage everything from a 45-slot dashboard. Edit BGM, Zoom, Camera Shake, Focus Points, and Duration without ever typing a manual configuration command.
+* **Smooth Interpolation:** Utilizes Catmull-Rom splines for buttery-smooth camera movements and rotations, completely eliminating spectator de-sync.
+* **Action Frames:** Trigger commands, titles, and subtitles exactly when the camera hits a specific frame.
+* **Soft-Dependencies:** Full support for PlaceholderAPI, WorldGuard, and MythicMobs.
 
-**ExtralyCinematic** is a professional cutscene and camera movement plugin. Built from scratch using native `BukkitRunnable` and Catmull-Rom Spline interpolation, it provides buttery-smooth camera movements without relying on heavy external libraries like TaskChain.
+## 📦 Installation
+1. Download `ExtralyCinematic-2.5.jar`.
+2. Place it inside your server's `plugins/` folder.
+3. Start or restart your server (Do not use `/reload`).
+4. *(Optional)* Install PlaceholderAPI, WorldGuard, or MythicMobs for extended features.
 
-### ✨ Key Features
-* **High Performance:** 100% native Bukkit API, lag-free, and YAML-based storage.
-* **Dual Recording Modes:** Supports Free Record (live flying) and Keyframe/Waypoint mode (connecting specific points).
-* **Cinematic Effects:** Dolly Zoom (FOV manipulation), Camera Shake, and Target Focus.
-* **Immersive Media:** Play Background Music (BGM - Vanilla or custom Resource Pack IDs) and display fully customizable Titles/Subtitles using **MiniMessage** formatting.
-* **Action Injection:** Execute custom commands as the player at specific frames.
-* **GUI Dashboard:** An intuitive in-game menu to edit, visualize paths, and manage cinematics (`/cinematic edit`).
-* **Soft-depends & Hooks:**
-  * `PlaceholderAPI`: Full placeholder support in titles, subtitles, and commands.
-  * `MythicMobs`: Custom `playcinematic` mechanic for bosses and skills.
-  * `WorldGuard`: Trigger cinematics automatically upon entering specific regions.
-
-### 🚀 Quick Start Guide
-
-**Method 1: Free Record (Live Movement)**
-1. Type `/cinematic record start <name>`.
-2. Fly around your build to capture frames automatically.
-3. Type `/cinematic record stop` to save.
-4. Type `/cinematic play <player_name> <name>` to view it.
-
-**Method 2: Keyframe / Waypoint (Smooth Spline)**
-1. Stand at Point A and look in your desired direction -> Type `/cinematic addframe <name>`.
-2. Move to Point B, change your pitch/yaw -> Type `/cinematic addframe <name>`.
-3. Add as many frames as you want.
-4. Set the total playback duration (e.g., 15 seconds): `/cinematic duration <name> 15`.
-5. Play the cinematic. The plugin will automatically calculate a smooth curved path between your frames!
-
-### ⌨️ Commands & Permissions
-**Permission for all commands:** `cinematic.cmd`
+## ⌨️ Commands & Permissions
+**Main Command:** `/cinematic` or `/cine`
+**Permission:** `cinematic.cmd` (Usage) | `cinematic.admin` (Reload)
 
 | Command | Description |
 | :--- | :--- |
-| `/cinematic edit` | Open the GUI Dashboard. |
-| `/cinematic list` | List all available cinematics. |
-| `/cinematic play <player> <name>` | Play a cinematic for a specific player. |
-| `/cinematic stop <player>` | Force stop a cinematic for a player. |
-| `/cinematic delete <name>` | Delete a cinematic permanently. |
-| `/cinematic path <name>` | Visualize the camera path with particles. |
-| `/cinematic rec <name> <sec>` | Record with a 3-second countdown. |
-| `/cinematic record start/stop` | Start/Stop free recording mode. |
-| `/cinematic addframe <name>` | Add a manual keyframe at your location. |
-| `/cinematic duration <name> <sec>` | Set total duration for Waypoint mode. |
-| `/cinematic focus <name> set/clear` | Lock camera to a specific location. |
-| `/cinematic shake <name> <intensity>`| Add camera shake effect (0 to disable). |
-| `/cinematic zoom <name> <start> <end>`| Add Dolly Zoom FOV effect (-10 to 10). |
-| `/cinematic bgm <name> <sound_id/clear>`| Set background music (e.g., `minecraft:music_disc.pigstep`). |
-| `/cinematic title/subtitle <name> <frame> <text>` | Add MiniMessage text to a specific frame. |
-| `/cinematic addcmd <name> <frame> <cmd>` | Execute a command at a specific frame (supports `%player%`). |
+| `/cine edit` | Opens the Main Dashboard GUI. |
+| `/cine rec <name> [seconds]` | Creates a cinematic with a countdown recording. |
+| `/cine record start <name>` | Starts freehand recording. |
+| `/cine record stop` | Stops freehand recording. |
+| `/cine play <player> <name>` | Plays a cinematic for a specific player. |
+| `/cine stop <player>` | Force-stops the cinematic for a player. |
+| `/cine reload` | Reloads configs and cinematic data. |
 
-### ⚙️ Configuration
+## 📖 Wiki & Usage Guide
 
-#### 1. `messages.yml`
-Customize 100% of the plugin's messages. Fully supports **MiniMessage** formatting.
-```yaml
-prefix: "<gold>[ExtralyCinematic]</gold> "
-play.finished: "<green>Cinematic finished.</green>"
-```
+### 1. Creating a Cinematic
+There are two ways to create a cinematic:
+* **The Quick Way (Recording):** Type `/cine rec <Name> 3`. The plugin will count down from 3, then record your exact movements in-game as a camera path. Type `/cine record stop` when done.
+* **The Precise Way (Manual):** Type `/cine edit`, click **"+ Add Cinematic"** (or use commands to create a track), and manually add frames at your current location.
 
-#### 2. `worldguard.yml`
-Link WorldGuard regions to cinematics. Players will be forced to watch the cutscene once upon entering the region.
-```yaml
-regions:
-  boss_arena_region: BossIntroCinematic
-  spawn_city_region: WelcomeCinematic
-```
+### 2. The Dashboard Editor (`/cine edit`)
+This is the heart of v2.5. Opening the dashboard displays all your cinematics. Click on one to open the **Deep Settings GUI**:
+* 🎶 **Edit BGM:** Sets a background music track (Minecraft sound name) to play during the cinematic.
+* 🔭 **Edit Zoom:** Sets a starting and ending FOV zoom level (uses Slowness/Speed effects smoothly).
+* 🫨 **Edit Shake:** Adds an earthquake/shaking effect to the camera (Set intensity, e.g., 0.5).
+* 🎯 **Set/Clear Focus:** Forces the camera to always look at a specific XYZ location, regardless of where the camera moves. Click to set it to your current standing location.
+* ⏱️ **Edit Duration:** Overrides the total length of the cinematic in seconds.
 
-#### 3. `cinematics/` Folder
-All cinematics are saved here as individual YAML files for easy manual editing.
+### 3. Tracks & Frames Management
+Inside the Cinematic GUI, click **Manage Tracks**:
+* A cinematic can have multiple tracks (e.g., "Main Camera", "Alternative Angle").
+* Click a Track to view its **Frames**.
+* **Frames** are the keyframes of your path. You can Shift-Right-Click to delete a bad frame, or Click it to add **Commands** that will execute when the camera reaches this exact spot.
 
-### 🔗 Hooks Integration
+### 4. Timeline & Transitions
+Inside the Cinematic GUI, click **Manage Timeline**:
+* Link different tracks together (e.g., Play Track A, then transition to Track B).
+* Click a clip to add a **Transition Effect** (like `DARKEN_FADE`) to create cinematic black-screen fades between camera cuts.
 
-**MythicMobs Mechanic**
-Use the `playcinematic` mechanic in your MythicMobs skills:
-```yaml
-Boss_Ultimate:
-  Skills:
-  - playcinematic{cine=MeteorStrike} @PlayersInRadius{r=20} ~onSpawn
-```
+### 5. Playing the Cinematic
+Use `/cine play <player> <name>` (can be used in console or command blocks). The player will be put into Spectator mode, bound to an invisible, optimized camera entity, and returned safely to their original location once finished.
 
 ---
----
+<br>
 
-## 🇻🇳 PHIÊN BẢN TIẾNG VIỆT (VIETNAMESE VERSION)
+# 🇻🇳 ExtralyCinematic v2.5 (Vietnamese)
 
-**ExtralyCinematic** là plugin tạo cutscene và luồng camera chuyên nghiệp dành cho server Minecraft (Paper/Bukkit). Plugin được code tối ưu hóa từ đầu bằng `BukkitRunnable` và thuật toán nội suy Catmull-Rom Spline, mang đến những thước phim mượt mà chuẩn Hollywood mà không làm lag server.
+Plugin tạo hiệu ứng Cinematic và Cutscene chuyên nghiệp, siêu nhẹ dành cho Paper 1.21.11+. Tạo ra các góc máy quay đẹp mắt, hiệu ứng hình ảnh và đồng bộ hành động mà không bao giờ lo lỗi NMS.
 
-### ✨ Tính năng nổi bật
-* **Hiệu suất cao:** Dùng 100% API bản địa, lưu trữ bằng YAML dễ dàng config.
-* **Hai chế độ quay:** Hỗ trợ quay tự do (Free Record) và quay theo điểm chốt (Keyframe/Waypoint).
-* **Hiệu ứng Điện ảnh:** Hỗ trợ Dolly Zoom (FOV), Camera Shake (Rung lắc) và Target Focus (Khóa mục tiêu).
-* **Âm thanh & Phụ đề:** Tích hợp nhạc nền BGM (Vanilla hoặc Custom Resource Pack) và hệ thống Phụ đề (Title/Subtitle) chuẩn **MiniMessage**.
-* **Thực thi Lệnh:** Chạy lệnh tự động (có placeholder `%player%`) tại từng frame cụ thể.
-* **GUI Dashboard:** Quản lý toàn bộ tính năng in-game cực tiện lợi (`/cinematic edit`).
-* **Tích hợp mạnh mẽ (Soft-depends):** * `PlaceholderAPI`: Hỗ trợ dịch mọi biến PAPI trong Title, Subtitle và Command.
-    * `MythicMobs`: Cung cấp mechanic ép người chơi xem phim khi đánh Boss.
-    * `WorldGuard`: Tự động kích hoạt phim khi đi vào Region.
+## 🚀 Tính năng mới (Bản cập nhật Tối ưu hóa v2.5)
+* **Thuần Bukkit API:** Loại bỏ hoàn toàn sự phụ thuộc vào `CommandAPI` và NMS. Plugin giờ đây siêu nhẹ (~50KB), tương thích vĩnh viễn với các bản cập nhật Minecraft sau này.
+* **Hệ thống GUI 2.0:** Nâng cấp toàn bộ menu lên chuẩn `InventoryHolder`. Chống mọi lỗi kẹt click, giật lag UI.
+* **Deep GUI Editor:** Quản lý mọi thứ từ Dashboard 45-slot. Chỉnh sửa Nhạc nền (BGM), Zoom, Rung màn hình (Shake), Tiêu điểm nhìn (Focus), và Thời lượng (Duration) trực tiếp trong GUI mà không cần gõ lệnh thủ công.
+* **Nội suy mượt mà:** Sử dụng thuật toán Catmull-Rom Spline để di chuyển và xoay góc nhìn camera siêu mượt, loại bỏ hoàn toàn hiện tượng giật lag khi spectate.
+* **Khung hình hành động (Action Frames):** Kích hoạt Lệnh (Command), Tiêu đề (Title/Subtitle) chính xác tại khung hình camera đi qua.
+* **Tích hợp:** Hỗ trợ tốt PlaceholderAPI, WorldGuard, và MythicMobs.
 
-### 🚀 Hướng dẫn sử dụng
+## 📦 Cài đặt
+1. Tải file `ExtralyCinematic-2.5.jar`.
+2. Đặt vào thư mục `plugins/` của server.
+3. Khởi động lại server (Không dùng lệnh `/reload`).
+4. *(Tùy chọn)* Cài đặt thêm PlaceholderAPI, WorldGuard hoặc MythicMobs để mở rộng tính năng.
 
-**Cách 1: Quay tự do (Free Record)**
-1. Gõ `/cinematic record start <tên>`.
-2. Bay lượn quanh công trình để plugin bắt frame tự động.
-3. Gõ `/cinematic record stop` để lưu lại.
-4. Gõ `/cinematic play <tên_người_chơi> <tên>` để xem.
+## ⌨️ Lệnh & Quyền hạn
+**Lệnh chính:** `/cinematic` hoặc `/cine`
+**Quyền:** `cinematic.cmd` (Sử dụng lệnh) | `cinematic.admin` (Reload)
 
-**Cách 2: Quay theo điểm chốt (Keyframe / Waypoint)**
-1. Đứng tại vị trí A, căn góc nhìn -> Gõ `/cinematic addframe <tên>`.
-2. Bay sang vị trí B, xoay mặt đi hướng khác -> Gõ `/cinematic addframe <tên>`.
-3. Add bao nhiêu frame tùy thích.
-4. Chốt tổng thời gian camera bay qua các điểm (ví dụ 15 giây): `/cinematic duration <tên> 15`.
-5. Play! Plugin sẽ tự tính toán vẽ ra một đường cong mượt mà đi qua các frame của bạn.
-
-### ⌨️ Danh sách Lệnh & Phân quyền
-**Quyền (Permission) mặc định:** `cinematic.cmd`
-
-| Lệnh | Chức năng |
+| Lệnh | Mô tả |
 | :--- | :--- |
-| `/cinematic edit` | Mở GUI Dashboard quản lý tổng. |
-| `/cinematic list` | Danh sách toàn bộ Cinematic. |
-| `/cinematic play <player> <name>` | Phát Cinematic cho người chơi. |
-| `/cinematic stop <player>` | Ép dừng Cinematic của một người chơi. |
-| `/cinematic delete <name>` | Xóa Cinematic. |
-| `/cinematic path <name>` | Hiển thị quỹ đạo bay bằng Particle. |
-| `/cinematic rec <name> <sec>` | Quay phim đếm ngược 3 giây. |
-| `/cinematic record start/stop` | Bắt đầu/Dừng quay tự do. |
-| `/cinematic addframe <name>` | Chấm 1 frame thủ công tại vị trí đang đứng. |
-| `/cinematic duration <name> <sec>` | Chỉnh thời lượng tổng (Dành cho Waypoint). |
-| `/cinematic focus <name> set/clear` | Khóa camera luôn nhìn vào vị trí bạn đang đứng. |
-| `/cinematic shake <name> <cường_độ>`| Chỉnh độ rung lắc (0 = tắt). |
-| `/cinematic zoom <name> <start> <end>`| Chỉnh hiệu ứng Dolly Zoom FOV (-10 đến 10). |
-| `/cinematic bgm <name> <ID_nhạc/clear>`| Đặt nhạc nền (VD: `minecraft:music_disc.pigstep`). |
-| `/cinematic title/subtitle <name> <frame> <text>` | Set Title/Subtitle bằng MiniMessage cho 1 frame. |
-| `/cinematic addcmd <name> <frame> <cmd>` | Gắn lệnh chạy tự động vào 1 frame. |
+| `/cine edit` | Mở bảng điều khiển Dashboard GUI chính. |
+| `/cine rec <tên> [giây]` | Tạo cinematic và đếm ngược để quay hình. |
+| `/cine record start <tên>` | Bắt đầu quay hình tự do. |
+| `/cine record stop` | Dừng quay hình. |
+| `/cine play <người_chơi> <tên>` | Trình chiếu cinematic cho một người chơi. |
+| `/cine stop <người_chơi>` | Buộc dừng cinematic đang chiếu. |
+| `/cine reload` | Tải lại config và dữ liệu cinematic. |
 
-### ⚙️ Hướng dẫn Config
+## 📖 Wiki & Hướng dẫn sử dụng
 
-#### 1. File `messages.yml`
-File này chứa 100% text phản hồi của plugin. Hỗ trợ **MiniMessage**.
-```yaml
-prefix: "<gold>[ExtralyCinematic]</gold> "
-play.finished: "<green>Đã xem xong Cinematic.</green>"
-```
+### 1. Tạo một Cinematic
+Có 2 cách để tạo một đoạn phim:
+* **Cách nhanh (Record):** Gõ `/cine rec <Tên> 3`. Plugin sẽ đếm ngược 3 giây, sau đó ghi lại chính xác quỹ đạo di chuyển của bạn trong game làm đường dẫn camera. Gõ `/cine record stop` khi hoàn thành.
+* **Cách thủ công (Chính xác):** Gõ `/cine edit`, tạo Track mới và thêm các Frame (Khung hình) thủ công tại vị trí bạn đang đứng.
 
-#### 2. File `worldguard.yml`
-Chỉ định Cinematic sẽ chạy khi người chơi bước vào một Region của WorldGuard.
-```yaml
-regions:
-  boss_arena: BossIntroCine
-  spawn_city: WelcomeCine
-```
+### 2. Bảng điều khiển (Dashboard Editor - `/cine edit`)
+Đây là trái tim của bản v2.5. Mở Dashboard sẽ hiển thị toàn bộ Cinematic của bạn. Click vào một Cinematic để mở **Cài đặt chuyên sâu**:
+* 🎶 **Edit BGM:** Đặt nhạc nền (tên âm thanh Minecraft) phát trong lúc chiếu phim.
+* 🔭 **Edit Zoom:** Đặt mức độ FOV phóng to/thu nhỏ lúc bắt đầu và kết thúc (Sử dụng hiệu ứng Speed/Slowness một cách mượt mà).
+* 🫨 **Edit Shake:** Thêm hiệu ứng động đất/rung lắc camera (Ví dụ cường độ: 0.5).
+* 🎯 **Set/Clear Focus:** Ép camera luôn luôn nhìn thẳng vào một tọa độ XYZ cố định, bất kể camera đang bay đi đâu. Click để cài đặt tiêu điểm tại vị trí bạn đang đứng.
+* ⏱️ **Edit Duration:** Ghi đè tổng thời lượng của cinematic (tính bằng giây).
 
-#### 3. Thư mục `cinematics/`
-Nơi chứa file data YAML của từng Cinematic. Bạn có thể mở ra để chỉnh sửa config frame, tọa độ bằng tay rất dễ dàng.
+### 3. Quản lý Tracks & Frames
+Bên trong Cinematic GUI, click **Manage Tracks**:
+* Một cinematic có thể có nhiều Track (VD: "Máy quay chính", "Máy quay góc cao").
+* Click vào một Track để xem các **Frames** (Khung hình).
+* **Frames** là các điểm tụ của đường bay camera. Bạn có thể Shift-Right-Click để xóa frame lỗi, hoặc Click vào nó để thêm **Lệnh (Commands)**. Các lệnh này sẽ được tự động chạy khi camera bay ngang qua đúng điểm đó.
 
-### 🔗 Tích hợp Plugins (Hooks)
+### 4. Dòng thời gian & Chuyển cảnh (Timeline & Transitions)
+Bên trong Cinematic GUI, click **Manage Timeline**:
+* Ghép nối các Track lại với nhau (VD: Chiếu Track A, sau đó chuyển sang Track B).
+* Click vào một Clip để thêm **Hiệu ứng chuyển cảnh (Transition)** (như `DARKEN_FADE`) để tạo hiệu ứng mờ đen màn hình hệt như phim rạp khi chuyển góc máy.
 
-**Dùng chung với MythicMobs**
-Sử dụng mechanic `playcinematic` trong file kỹ năng của Boss để ép người chơi xung quanh xem Cutscene (rất hợp làm Intro Boss hoặc Ulti).
-```yaml
-Boss_Chi_Mang:
-  Skills:
-  - playcinematic{cine=ThienThach} @PlayersInRadius{r=20} ~onSpawn
-```
-```
+### 5. Trình chiếu Cinematic
+Sử dụng lệnh `/cine play <tên_người_chơi> <tên_cinematic>` (có thể dùng trong console hoặc command block). Người chơi sẽ được chuyển sang chế độ Khán giả (Spectator), khóa góc nhìn vào một thực thể camera tàng hình siêu mượt, và được trả về vị trí cũ an toàn khi phim kết thúc.

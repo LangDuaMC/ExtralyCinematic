@@ -19,7 +19,11 @@ import org.bukkit.util.Vector;
 import pluginsmc.langdua.core.paper.Core;
 import pluginsmc.langdua.core.paper.hooks.PapiHook;
 import pluginsmc.langdua.core.paper.objects.Cinematic;
+import pluginsmc.langdua.core.paper.objects.CinematicTrack;
 import pluginsmc.langdua.core.paper.objects.Frame;
+import pluginsmc.langdua.core.paper.objects.TimelineClip;
+import pluginsmc.langdua.core.paper.objects.TransitionEffect;
+import pluginsmc.langdua.core.paper.objects.TransitionMetadata;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -40,31 +44,30 @@ public class PlayManager {
     }
 
     public void play(CommandSender sender, Player player, String cinematicName) {
-        Cinematic cinematic = instance.getGame().getCinematics().get(cinematicName);
-        if (cinematic == null) {
-            instance.getMessageManager().send(sender, "error.not-exist", "name", cinematicName);
-            return;
-        }
-        play(sender, player, cinematic, cinematicName);
-    }
+        var game = instance.getGame();
+        var msg = instance.getMessageManager();
 
-    public void play(CommandSender sender, Player player, Cinematic cinematic, String playbackName) {
         if (sessions.containsKey(player.getUniqueId())) {
             sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Player is already watching a cinematic!</red>"));
             return;
         }
 
-        cinematic.ensureStructure();
-        List<Frame> frames = cinematic.getFrames();
-        if (frames.size() < 2) {
-            instance.getMessageManager().send(sender, "error.not-exist", "name", playbackName);
+        Cinematic cinematic = game.getCinematics().get(cinematicName);
+        if (cinematic == null) {
+            msg.send(sender, "error.not-exist", "name", cinematicName);
             return;
         }
 
-        Frame firstFrame = frames.getFirst();
+        List<ResolvedClip> clips = resolveTimeline(cinematic);
+        if (clips.isEmpty()) {
+            msg.send(sender, "error.not-exist", "name", cinematicName);
+            return;
+        }
+
+        ResolvedClip firstClip = clips.get(0);
+        Frame firstFrame = firstClip.frames().getFirst();
         World world = Bukkit.getWorld(firstFrame.getWorld());
         if (world == null) {
-            instance.getLogger().warning("Cannot play '" + playbackName + "' because the first frame world is unavailable.");
             return;
         }
 
@@ -79,31 +82,30 @@ public class PlayManager {
                 firstFrame.getPitch()
         );
 
-        instance.getGame().getViewers().add(player.getUniqueId());
+        game.getViewers().add(player.getUniqueId());
         player.setGameMode(GameMode.SPECTATOR);
         startLocation.getChunk().load();
 
         player.teleportAsync(startLocation).thenAccept(success -> {
             if (!success || !player.isOnline()) {
-                instance.getGame().getViewers().remove(player.getUniqueId());
+                game.getViewers().remove(player.getUniqueId());
                 return;
             }
 
             Bukkit.getScheduler().runTaskLater(instance, () -> {
-                if (!player.isOnline() || !instance.getGame().getViewers().contains(player.getUniqueId())) {
-                    instance.getGame().getViewers().remove(player.getUniqueId());
+                if (!player.isOnline() || !game.getViewers().contains(player.getUniqueId())) {
+                    game.getViewers().remove(player.getUniqueId());
                     return;
                 }
 
-                ArmorStand camera = spawnCamera(startLocation);
+                ArmorStand camera = spawnCamera(startLocation, player);
                 player.setSpectatorTarget(camera);
 
                 PlaybackSession session = new PlaybackSession(
                         sender,
                         player,
                         cinematic,
-                        playbackName,
-                        frames,
+                        clips,
                         camera,
                         originalLocation,
                         originalGameMode
@@ -128,7 +130,7 @@ public class PlayManager {
         sessions.clear();
     }
 
-    private ArmorStand spawnCamera(Location location) {
+    private ArmorStand spawnCamera(Location location, Player viewer) {
         ArmorStand camera = (ArmorStand) location.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
         camera.setVisible(false);
         camera.setGravity(false);
@@ -138,24 +140,47 @@ public class PlayManager {
         camera.setPersistent(false);
         camera.setSilent(true);
         camera.addScoreboardTag(CAMERA_TAG);
+
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!p.getUniqueId().equals(viewer.getUniqueId())) {
+                p.hideEntity(instance, camera);
+            }
+        }
         return camera;
     }
 
+    private List<ResolvedClip> resolveTimeline(Cinematic cinematic) {
+        List<ResolvedClip> resolved = new ArrayList<>();
+        for (TimelineClip clip : cinematic.getTimeline()) {
+            CinematicTrack track = cinematic.getTracks().get(clip.getTrackId());
+            if (track == null || !track.isPlayable()) continue;
+
+            int durationTicks = track.getDurationTicks();
+            if (durationTicks <= 0) {
+                if (resolved.isEmpty() && cinematic.getDuration() > 0) {
+                    durationTicks = cinematic.getDuration() * 20;
+                } else {
+                    durationTicks = Math.max(1, (track.getFrames().size() - 1) * instance.getInterpolationSteps());
+                }
+            }
+            resolved.add(new ResolvedClip(track, clip.getTransition(), durationTicks, track.getFrames()));
+        }
+        if (resolved.isEmpty() && cinematic.getPrimaryTrack() != null && cinematic.getPrimaryTrack().isPlayable()) {
+            CinematicTrack track = cinematic.getPrimaryTrack();
+            int durationTicks = track.getDurationTicks() > 0 ? track.getDurationTicks() : (cinematic.getDuration() > 0 ? cinematic.getDuration() * 20 : Math.max(1, (track.getFrames().size() - 1) * instance.getInterpolationSteps()));
+            resolved.add(new ResolvedClip(track, new TransitionMetadata(), durationTicks, track.getFrames()));
+        }
+        return resolved;
+    }
+
     private double catmullRom(double p0, double p1, double p2, double p3, double t) {
-        return 0.5D * ((2 * p1)
-                + (-p0 + p2) * t
-                + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t
-                + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+        return 0.5D * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
     }
 
     private float unwrapAngle(float reference, float angle) {
         float diff = angle - reference;
-        while (diff < -180.0F) {
-            diff += 360.0F;
-        }
-        while (diff > 180.0F) {
-            diff -= 360.0F;
-        }
+        while (diff < -180.0F) diff += 360.0F;
+        while (diff > 180.0F) diff -= 360.0F;
         return reference + diff;
     }
 
@@ -166,25 +191,17 @@ public class PlayManager {
     private void dispatchFrame(Player player, Frame frame) {
         if (!frame.getCommands().isEmpty()) {
             for (String rawCommand : frame.getCommands()) {
-                if (rawCommand == null || rawCommand.isBlank()) {
-                    continue;
-                }
+                if (rawCommand == null || rawCommand.isBlank()) continue;
                 String command = rawCommand.replace("%player%", player.getName());
-                if (instance.isPapiEnabled()) {
-                    command = PapiHook.parse(player, command);
-                }
-                if (command.startsWith("/")) {
-                    command = command.substring(1);
-                }
+                if (instance.isPapiEnabled()) command = PapiHook.parse(player, command);
+                if (command.startsWith("/")) command = command.substring(1);
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
             }
         }
 
         boolean hasTitle = frame.getTitle() != null && !frame.getTitle().isBlank();
         boolean hasSubtitle = frame.getSubtitle() != null && !frame.getSubtitle().isBlank();
-        if (!hasTitle && !hasSubtitle) {
-            return;
-        }
+        if (!hasTitle && !hasSubtitle) return;
 
         String title = hasTitle ? frame.getTitle() : "";
         String subtitle = hasSubtitle ? frame.getSubtitle() : "";
@@ -195,48 +212,38 @@ public class PlayManager {
 
         Component titleComponent = hasTitle ? MiniMessage.miniMessage().deserialize(title) : Component.empty();
         Component subtitleComponent = hasSubtitle ? MiniMessage.miniMessage().deserialize(subtitle) : Component.empty();
-        player.showTitle(Title.title(
-                titleComponent,
-                subtitleComponent,
-                Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(3000), Duration.ofMillis(500))
-        ));
+        player.showTitle(Title.title(titleComponent, subtitleComponent, Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(3000), Duration.ofMillis(500))));
     }
 
     private final class PlaybackSession {
         private final CommandSender source;
         private final Player player;
         private final Cinematic cinematic;
-        private final String playbackName;
-        private final List<Frame> frames;
+        private final List<ResolvedClip> clips;
         private final ArmorStand camera;
         private final Location originalLocation;
         private final GameMode originalGameMode;
         private final Random shakeRandom;
+        private final int[] lastDispatchedFrame;
 
         private BukkitRunnable task;
-        private int tick = 0;
-        private int lastDispatchedFrame = -1;
+        private int clipIndex = 0;
+        private int clipTick = 0;
         private boolean stopped;
 
-        private PlaybackSession(
-                CommandSender source,
-                Player player,
-                Cinematic cinematic,
-                String playbackName,
-                List<Frame> frames,
-                ArmorStand camera,
-                Location originalLocation,
-                GameMode originalGameMode
-        ) {
+        private PlaybackSession(CommandSender source, Player player, Cinematic cinematic, List<ResolvedClip> clips, ArmorStand camera, Location originalLocation, GameMode originalGameMode) {
             this.source = source;
             this.player = player;
             this.cinematic = cinematic;
-            this.playbackName = playbackName;
-            this.frames = frames;
+            this.clips = clips;
             this.camera = camera;
             this.originalLocation = originalLocation;
             this.originalGameMode = originalGameMode;
-            this.shakeRandom = new Random(player.getUniqueId().getMostSignificantBits() ^ playbackName.hashCode());
+            this.shakeRandom = new Random(player.getUniqueId().getMostSignificantBits() ^ cinematic.getName().hashCode());
+            this.lastDispatchedFrame = new int[clips.size()];
+            for (int i = 0; i < lastDispatchedFrame.length; i++) {
+                lastDispatchedFrame[i] = -1;
+            }
         }
 
         private void start() {
@@ -247,82 +254,73 @@ public class PlayManager {
             task = new BukkitRunnable() {
                 @Override
                 public void run() {
-                    if (stopped || !player.isOnline()) {
+                    if (stopped || !player.isOnline() || clipIndex >= clips.size()) {
                         stop(false, null);
                         cancel();
                         return;
                     }
 
-                    if (player.getGameMode() != GameMode.SPECTATOR) {
-                        player.setGameMode(GameMode.SPECTATOR);
-                    }
                     if (player.getSpectatorTarget() == null || !player.getSpectatorTarget().equals(camera)) {
                         player.setSpectatorTarget(camera);
                     }
 
-                    tickPlayback();
+                    tickClip(clips.get(clipIndex));
                 }
             };
             task.runTaskTimer(instance, 0L, 1L);
         }
 
-        private void tickPlayback() {
-            int segmentCount = frames.size() - 1;
-            int durationTicks = getDurationTicks(segmentCount);
-            boolean finalTick = tick >= durationTicks;
-            double progress = durationTicks <= 0 ? 1.0D : (double) tick / durationTicks;
+        private void tickClip(ResolvedClip clip) {
+            boolean lastTickOfClip = clipTick >= clip.durationTicks();
+            double progress = clip.durationTicks() <= 0 ? 1.0D : (double) clipTick / clip.durationTicks();
             progress = Math.max(0.0D, Math.min(1.0D, progress));
             double eased = ease(progress);
 
+            int segmentCount = clip.frames().size() - 1;
             double exactSegment = eased * segmentCount;
             int segmentIndex = Math.min((int) exactSegment, segmentCount - 1);
             double localT = exactSegment - segmentIndex;
-            if (finalTick) {
+            if (lastTickOfClip) {
                 segmentIndex = segmentCount - 1;
                 localT = 1.0D;
             }
 
-            dispatchPassedFrames(finalTick ? frames.size() - 1 : segmentIndex + 1);
-            moveCamera(segmentIndex, localT);
+            dispatchPassedFrames(clip, lastTickOfClip ? clip.frames().size() - 1 : segmentIndex + 1);
+            moveCamera(clip, segmentIndex, localT);
             applyZoom(eased);
 
-            if (finalTick) {
-                stop(false, null);
-                if (task != null) {
-                    task.cancel();
+            if (lastTickOfClip) {
+                clipIndex++;
+                clipTick = 0;
+                if (clipIndex >= clips.size()) {
+                    stop(false, null);
+                    if (task != null) task.cancel();
+                    return;
                 }
+                applyTransition(clips.get(clipIndex).transition());
                 return;
             }
-
-            tick++;
+            clipTick++;
         }
 
-        private int getDurationTicks(int segmentCount) {
-            if (cinematic.getDuration() > 0) {
-                return cinematic.getDuration() * 20;
-            }
-            return Math.max(1, segmentCount * instance.getInterpolationSteps());
-        }
-
-        private void dispatchPassedFrames(int currentFrame) {
-            while (lastDispatchedFrame < currentFrame) {
-                lastDispatchedFrame++;
-                if (lastDispatchedFrame >= 0 && lastDispatchedFrame < frames.size()) {
-                    dispatchFrame(player, frames.get(lastDispatchedFrame));
+        private void dispatchPassedFrames(ResolvedClip clip, int currentFrame) {
+            while (lastDispatchedFrame[clipIndex] < currentFrame) {
+                lastDispatchedFrame[clipIndex]++;
+                if (lastDispatchedFrame[clipIndex] >= 0 && lastDispatchedFrame[clipIndex] < clip.frames().size()) {
+                    dispatchFrame(player, clip.frames().get(lastDispatchedFrame[clipIndex]));
                 }
             }
         }
 
-        private void moveCamera(int segmentIndex, double localT) {
+        private void moveCamera(ResolvedClip clip, int segmentIndex, double localT) {
+            List<Frame> frames = clip.frames();
             Frame f1 = frames.get(segmentIndex);
             Frame f2 = frames.get(segmentIndex + 1);
             Frame f0 = segmentIndex > 0 ? frames.get(segmentIndex - 1) : f1;
             Frame f3 = segmentIndex < frames.size() - 2 ? frames.get(segmentIndex + 2) : f2;
 
             World world = Bukkit.getWorld(f1.getWorld() != null ? f1.getWorld() : f2.getWorld());
-            if (world == null) {
-                return;
-            }
+            if (world == null) return;
 
             double x = catmullRom(f0.getX(), f1.getX(), f2.getX(), f3.getX(), localT);
             double y = catmullRom(f0.getY(), f1.getY(), f2.getY(), f3.getY(), localT);
@@ -330,12 +328,10 @@ public class PlayManager {
 
             float yaw;
             float pitch;
-            if (cinematic.hasFocus()) {
+            if (cinematic.hasFocus() && cinematic.getFocusWorld() != null && cinematic.getFocusWorld().equals(world.getName())) {
                 Vector direction = new Vector(cinematic.getFocusX() - x, cinematic.getFocusY() - y, cinematic.getFocusZ() - z);
                 Location look = new Location(world, x, y, z);
-                if (direction.lengthSquared() > 0.0001D) {
-                    look.setDirection(direction);
-                }
+                if (direction.lengthSquared() > 0.0001D) look.setDirection(direction);
                 yaw = look.getYaw();
                 pitch = look.getPitch();
             } else {
@@ -353,11 +349,9 @@ public class PlayManager {
             }
 
             Location target = new Location(world, x, y, z, yaw, pitch);
-            if (!target.getChunk().isLoaded()) {
-                target.getChunk().load();
-            }
+            if (!target.getChunk().isLoaded()) target.getChunk().load();
+
             camera.teleport(target);
-            camera.setRotation(yaw, pitch);
         }
 
         private void applyZoom(double eased) {
@@ -382,28 +376,25 @@ public class PlayManager {
             }
         }
 
+        private void applyTransition(TransitionMetadata transition) {
+            if (transition.getEffect() != TransitionEffect.DARKEN_FADE || transition.getDurationTicks() <= 0) return;
+            player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, transition.getDurationTicks(), Math.max(0, transition.getStrength() - 1), false, false, false));
+        }
+
         private void stop(boolean forced, CommandSender stopSource) {
-            if (stopped) {
-                return;
-            }
+            if (stopped) return;
             stopped = true;
 
             sessions.remove(player.getUniqueId());
             instance.getGame().getViewers().remove(player.getUniqueId());
 
-            if (task != null) {
-                task.cancel();
-            }
+            if (task != null) task.cancel();
 
             if (player.isOnline()) {
-                if (player.getGameMode() == GameMode.SPECTATOR) {
-                    player.setSpectatorTarget(null);
-                }
+                player.setSpectatorTarget(null);
                 player.teleport(originalLocation);
                 Bukkit.getScheduler().runTaskLater(instance, () -> {
-                    if (!player.isOnline()) {
-                        return;
-                    }
+                    if (!player.isOnline()) return;
                     player.setGameMode(originalGameMode);
                     player.removePotionEffect(PotionEffectType.SLOWNESS);
                     player.removePotionEffect(PotionEffectType.SPEED);
@@ -411,19 +402,14 @@ public class PlayManager {
                 }, 1L);
 
                 if (cinematic.getBgmSound() != null && !cinematic.getBgmSound().isBlank()) {
-                    try {
-                        player.stopSound(cinematic.getBgmSound(), SoundCategory.MASTER);
-                    } catch (Exception ignored) {
-                    }
+                    try { player.stopSound(cinematic.getBgmSound(), SoundCategory.MASTER); } catch (Exception ignored) {}
                 }
             }
 
             if (camera.isValid()) {
                 camera.remove();
                 Bukkit.getScheduler().runTaskLater(instance, () -> {
-                    if (camera.isValid()) {
-                        camera.remove();
-                    }
+                    if (camera.isValid()) camera.remove();
                 }, 1L);
             }
 
@@ -434,4 +420,6 @@ public class PlayManager {
             }
         }
     }
+
+    private record ResolvedClip(CinematicTrack track, TransitionMetadata transition, int durationTicks, List<Frame> frames) {}
 }
